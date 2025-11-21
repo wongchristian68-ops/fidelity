@@ -49,7 +49,7 @@ export function RewardModal({ restaurant, onClose }: RewardModalProps) {
           </div>
           <DialogTitle className="text-2xl font-bold font-headline text-center">Félicitations !</DialogTitle>
           <DialogDescription className="text-center">
-            Vous avez débloqué : <span className="font-bold text-orange-600">{restaurant.reward}</span>
+            Vous avez débloqué : <span className="font-bold text-orange-600">{restaurant.loyaltyReward}</span>
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 space-y-4">

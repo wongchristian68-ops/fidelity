@@ -38,12 +38,14 @@ export default function CardsPage() {
   }
   
   const cardIds = Object.keys(client.cards);
-  const totalPoints = cardIds.reduce((acc, id) => acc + (client.cards[id] || 0), 0);
+  const totalPoints = cardIds.reduce((acc, id) => acc + (client.cards[id]?.stamps || 0), 0);
 
   const handleModalClose = () => {
     setRewardRestaurant(null);
     // Force a re-fetch of client data to show reset card
-    setClient(getClient(client.id));
+    if (client) {
+      setClient(getClient(client.id));
+    }
   };
   
   return (
@@ -76,9 +78,9 @@ export default function CardsPage() {
         ) : (
           cardIds.map(restoId => {
             const resto = restaurants[restoId];
-            const stamps = client.cards[restoId];
-            if (!resto) return null;
-            return <LoyaltyCard key={restoId} restaurant={resto} stamps={stamps} />;
+            const clientCard = client.cards[restoId];
+            if (!resto || !clientCard) return null;
+            return <LoyaltyCard key={restoId} restaurant={resto} clientCard={clientCard} />;
           })
         )}
       </main>

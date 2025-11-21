@@ -2,92 +2,104 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from '@/hooks/use-session';
-import { getClient, getClients, saveClient } from '@/lib/db';
-import type { Client } from '@/lib/types';
+import { getClient, getClients, getRestaurants, saveClient } from '@/lib/db';
+import type { Client, Restaurant } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function ReferralPage() {
   const { session, isLoading } = useSession();
   const { toast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
+  const [restaurants, setRestaurants] = useState<{[id: string]: Restaurant}>({});
   const [referralCodeInput, setReferralCodeInput] = useState('');
+  const [selectedRestoId, setSelectedRestoId] = useState('');
 
   useEffect(() => {
     if (session) {
       const currentClient = getClient(session.id);
       setClient(currentClient);
-      if (currentClient?.referrer) {
-        setReferralCodeInput(currentClient.referrer);
-      }
+      setRestaurants(getRestaurants());
     }
   }, [session]);
-
-  const copyReferralCode = () => {
-    if (client?.referralCode) {
-      navigator.clipboard.writeText(client.referralCode);
-      toast({ title: 'Code copié !' });
-    }
-  };
-
+  
   const submitReferralCode = () => {
-    if (!client) return;
+    if (!client || !selectedRestoId || !referralCodeInput) return;
     const code = referralCodeInput.trim().toUpperCase();
 
-    if (!code) return;
-    if (code === client.referralCode) {
-      toast({ title: "Vous ne pouvez pas vous parrainer !", variant: 'destructive' });
-      return;
-    }
     if (client.referrer) {
       toast({ title: "Vous avez déjà un parrain.", variant: 'destructive' });
       return;
     }
-
+    
+    if (client.cards[selectedRestoId]?.referralCode === code) {
+      toast({ title: "Vous ne pouvez pas vous parrainer vous-même.", variant: 'destructive' });
+      return;
+    }
+    
     const allClients = getClients();
-    const referrerId = Object.keys(allClients).find(id => allClients[id].referralCode === code);
+    const referrerId = Object.keys(allClients).find(id => allClients[id].cards[selectedRestoId]?.referralCode === code);
 
     if (referrerId) {
-      const updatedClient = { ...client, referrer: code };
+      const updatedClient = { ...client, referrer: { restoId: selectedRestoId, code } };
       saveClient(client.id, updatedClient);
       setClient(updatedClient);
-      toast({ title: "Parrain validé !", description: "Offre de bienvenue activée." });
+      toast({ title: "Parrain validé !", description: "Votre bonus s'activera lors de votre premier tampon dans ce restaurant." });
     } else {
-      toast({ title: "Code parrain inconnu", variant: 'destructive' });
+      toast({ title: "Code parrain inconnu", description: "Ce code n'est pas valide pour le restaurant sélectionné.", variant: 'destructive' });
     }
   };
 
   if (isLoading || !client) {
     return <div className="p-4 text-center">Chargement...</div>;
   }
+  
+  const clientHasCards = client && Object.keys(client.cards).length > 0;
+  const restaurantsWithCards = clientHasCards ? Object.keys(client.cards).map(id => restaurants[id]).filter(Boolean) : [];
 
   return (
     <div className="p-4 space-y-6">
-      <Card className="bg-gradient-to-br from-purple-600 to-indigo-700 text-white shadow-lg">
+      <Card>
         <CardHeader>
           <CardTitle className="font-headline text-lg">Parrainer un ami</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-purple-200 text-sm mb-6">
-            Gagnez 2 tampons bonus quand votre filleul valide son premier passage !
+          <p className="text-sm text-gray-600">
+            Retrouvez vos codes de parrainage directement sur vos cartes de fidélité respectives. Partagez-les pour gagner des tampons bonus !
           </p>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center border border-white/20 mb-4">
-            <p className="text-xs text-purple-200 uppercase tracking-wider mb-1">Votre code parrain</p>
-            <div className="text-3xl font-mono font-bold tracking-widest">{client.referralCode}</div>
-          </div>
-          <Button onClick={copyReferralCode} className="w-full bg-white text-purple-700 font-semibold hover:bg-gray-100">
-            Copier mon code
-          </Button>
         </CardContent>
       </Card>
-
+      
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline text-lg">J'ai un parrain</CardTitle>
+          <CardTitle className="font-headline text-lg">J'ai été parrainé</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-gray-500">
+            Entrez le code de votre parrain et sélectionnez le restaurant associé pour activer votre offre de bienvenue.
+          </p>
+          <Select
+            onValueChange={setSelectedRestoId}
+            value={selectedRestoId}
+            disabled={!!client.referrer || !clientHasCards}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choisir un restaurant" />
+            </SelectTrigger>
+            <SelectContent>
+              {clientHasCards ? (
+                restaurantsWithCards.map(resto => (
+                  <SelectItem key={resto.id} value={resto.id}>{resto.name}</SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" disabled>Scannez d'abord une carte</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+
           <div className="flex gap-2">
             <Input
               type="text"
@@ -100,14 +112,16 @@ export default function ReferralPage() {
             <Button
               onClick={submitReferralCode}
               className="bg-gray-800 text-white font-semibold hover:bg-gray-700"
-              disabled={!!client.referrer}
+              disabled={!!client.referrer || !selectedRestoId || !referralCodeInput}
             >
               Valider
             </Button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Entrez le code pour gagner une offre de bienvenue.
-          </p>
+          {client.referrer && (
+            <p className="text-sm text-green-700 bg-green-100 p-3 rounded-lg">
+              Parrainage activé ! Vous recevrez votre récompense lors de votre prochain tampon chez {restaurants[client.referrer.restoId]?.name}.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

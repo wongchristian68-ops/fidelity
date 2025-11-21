@@ -4,10 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import QrScanner from '@/components/client/qr-scanner';
-import type { Client, Restaurant, StampQrCode } from '@/lib/types';
-import { getClient, getRestaurant, saveClient, saveRestaurant } from '@/lib/db';
+import type { Client, Restaurant, StampQrCode, ClientCard } from '@/lib/types';
+import { getClient, getRestaurant, saveClient, saveRestaurant, getClients } from '@/lib/db';
 import { useSession } from '@/hooks/use-session';
-
 
 export default function ScanPage() {
   const router = useRouter();
@@ -19,38 +18,53 @@ export default function ScanPage() {
     
     try {
       const data: StampQrCode = JSON.parse(decodedText);
+      const resto = getRestaurant(data.restoId);
+
+      if (!resto) {
+        toast({ title: "Restaurant Inconnu", variant: "destructive" });
+        return;
+      }
+      if (resto.qrCodeValue !== data.value || (resto.qrCodeExpiry && Date.now() > resto.qrCodeExpiry)) {
+        toast({ title: "Code QR invalide ou expiré", variant: "destructive" });
+        return;
+      }
+      
       if (data.type === 'stamp' && data.restoId) {
-        addStamp(data.restoId);
+        addStamp(data.restoId, resto);
       } else {
         toast({ title: "Code QR invalide", variant: "destructive" });
       }
     } catch (e) {
-      toast({ title: "Code QR invalide", description: "Ce code n'est pas reconnu par StampJoy.", variant: "destructive" });
+      toast({ title: "Code QR illisible", description: "Ce code n'est pas reconnu par StampJoy.", variant: "destructive" });
     }
   };
 
-  const addStamp = (restoId: string) => {
+  const addStamp = (restoId: string, resto: Restaurant) => {
     if (!session) return;
     
-    const client = getClient(session.id);
-    const resto = getRestaurant(restoId);
-
-    if (!client || !resto) {
-      toast({ title: "Erreur", description: "Restaurant ou client non trouvé.", variant: "destructive" });
+    let client = getClient(session.id);
+    if (!client) {
+      toast({ title: "Erreur", description: "Client non trouvé.", variant: "destructive" });
       return;
     }
 
-    const currentStamps = client.cards[restoId] || 0;
-    let newStamps = currentStamps + 1;
-    let justUnlockedReward = false;
+    const isFirstEverStamp = !client.cards[restoId];
+    if (isFirstEverStamp) {
+      client.cards[restoId] = {
+        stamps: 0,
+        referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+      };
+    }
+    
+    const clientCard = client.cards[restoId];
+    let newStamps = clientCard.stamps + 1;
 
     if (newStamps >= 10) {
-      justUnlockedReward = true;
       // The reward is claimed, stamps reset
-      client.cards[restoId] = 0; 
+      client.cards[restoId].stamps = 0; 
       sessionStorage.setItem('rewardUnlocked', restoId);
     } else {
-       client.cards[restoId] = newStamps;
+       client.cards[restoId].stamps = newStamps;
     }
     
     saveClient(client.id, client);
@@ -58,8 +72,8 @@ export default function ScanPage() {
     resto.stampsGiven = (resto.stampsGiven || 0) + 1;
 
     // First stamp with a referrer?
-    if (currentStamps === 0 && client.referrer) {
-       rewardReferrer(client.referrer, restoId);
+    if (isFirstEverStamp && client.referrer && client.referrer.restoId === restoId) {
+       rewardReferrer(client.referrer.code, restoId, resto.referralBonusStamps);
        resto.referralsCount = (resto.referralsCount || 0) + 1;
     }
 
@@ -69,19 +83,21 @@ export default function ScanPage() {
     router.push('/client/cards');
   };
 
-  const rewardReferrer = (referralCode: string, restoId: string) => {
-    // Find the referrer by code
-    // This is inefficient but fine for a demo
-    const clients = Object.values(getClient(null) || {});
-    const referrer = clients.find(c => c.referralCode === referralCode);
+  const rewardReferrer = (referralCode: string, restoId: string, bonus: number) => {
+    const allClients = getClients();
+    const referrerId = Object.keys(allClients).find(id => 
+      allClients[id].cards[restoId]?.referralCode === referralCode
+    );
 
-    if (referrer) {
-      referrer.cards[restoId] = (referrer.cards[restoId] || 0) + 2; // +2 bonus stamps
-      saveClient(referrer.id, referrer);
-      console.log(`Parrain ${referrer.name} récompensé avec 2 tampons!`);
+    if (referrerId) {
+      const referrer = allClients[referrerId];
+      if (referrer.cards[restoId]) {
+        referrer.cards[restoId].stamps = (referrer.cards[restoId].stamps || 0) + bonus;
+        saveClient(referrer.id, referrer);
+        console.log(`Parrain ${referrer.name} récompensé avec ${bonus} tampons!`);
+      }
     }
   };
-
 
   const handleScanError = (errorMessage: string) => {
     // console.error(errorMessage);

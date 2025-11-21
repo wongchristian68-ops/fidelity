@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { UtensilsIcon } from '@/components/icons/utensils-icon';
 import { getClient, getRestaurant, saveRestaurant, getClients, saveClient } from '@/lib/db';
 import type { Client, Restaurant } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -38,19 +39,18 @@ export default function AuthPage() {
       }
     } else {
       // Register
-      if (pin !== '1234') {
-        toast({ title: 'Erreur', description: 'Pour une première connexion, le code PIN doit être "1234".', variant: 'destructive' });
-        return;
-      }
       restaurant = {
         id,
         name,
-        pin: '1234',
+        pin: pin,
         pinEditable: true,
-        reward: 'Surprise du Chef',
+        loyaltyReward: 'Surprise du Chef',
+        referralBonusStamps: 2,
         googleLink: '',
         stampsGiven: 0,
         referralsCount: 0,
+        qrCodeValue: null,
+        qrCodeExpiry: null,
       };
       saveRestaurant(id, restaurant);
     }
@@ -83,7 +83,6 @@ export default function AuthPage() {
         name,
         phone,
         cards: {},
-        referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
         referrer: null,
       };
       saveClient(id, client);
@@ -128,7 +127,7 @@ export default function AuthPage() {
               Gérer mon Restaurant
             </Button>
             <p className="text-xs text-gray-500 text-center pt-2">
-              Pour la première connexion, utilisez le PIN "1234".
+              Créez un compte ou connectez-vous.
             </p>
           </CardContent>
         </Card>
