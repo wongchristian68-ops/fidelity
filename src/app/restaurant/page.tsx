@@ -20,6 +20,7 @@ export default function RestaurantPage() {
   const [loyaltyRewardInput, setLoyaltyRewardInput] = useState('');
   const [referralRewardInput, setReferralRewardInput] = useState('');
   const [googleLinkInput, setGoogleLinkInput] = useState('');
+  const [cardImageUrlInput, setCardImageUrlInput] = useState('');
   const [pinInput, setPinInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
 
@@ -30,6 +31,7 @@ export default function RestaurantPage() {
       setLoyaltyRewardInput(currentRestaurant?.loyaltyReward || '');
       setReferralRewardInput(currentRestaurant?.referralReward || '');
       setGoogleLinkInput(currentRestaurant?.googleLink || '');
+      setCardImageUrlInput(currentRestaurant?.cardImageUrl || '');
       setPinInput(currentRestaurant?.pin || '');
     }
   }, [session]);
@@ -73,6 +75,7 @@ export default function RestaurantPage() {
         loyaltyReward: loyaltyRewardInput,
         referralReward: referralRewardInput,
         googleLink: googleLinkInput,
+        cardImageUrl: cardImageUrlInput,
         pin: pinUpdated ? pinInput : restaurant.pin,
         pinEditable: pinUpdated ? false : restaurant.pinEditable,
       };
@@ -158,11 +161,11 @@ export default function RestaurantPage() {
               <div className="text-xs text-gray-500">Parrainages actifs</div>
             </CardContent>
           </Card>
-        </div>
+        </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-headline">Configuration des Récompenses</CardTitle>
+            <CardTitle className="font-headline">Configuration</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -198,6 +201,15 @@ export default function RestaurantPage() {
                 onChange={(e) => setGoogleLinkInput(e.target.value)}
                 className="mt-1"
                 placeholder="https://g.page/..."
+              />
+            </div>
+             <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase">Image de la carte</label>
+              <Input
+                value={cardImageUrlInput}
+                onChange={(e) => setCardImageUrlInput(e.target.value)}
+                className="mt-1"
+                placeholder="URL de l'image (https://...)"
               />
             </div>
           </CardContent>

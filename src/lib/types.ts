@@ -10,6 +10,7 @@ export interface Restaurant {
   pinEditable: boolean;
   qrCodeValue: string | null;
   qrCodeExpiry: number | null; // Timestamp
+  cardImageUrl?: string;
 }
 
 export interface ClientCard {
