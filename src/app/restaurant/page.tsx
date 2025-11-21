@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, ChangeEvent } from 'react';
 import { useSession } from '@/hooks/use-session';
 import { getRestaurant, saveRestaurant } from '@/lib/db';
 import type { Restaurant } from '@/lib/types';
@@ -8,10 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QrCodeDisplay } from '@/components/restaurant/qr-code';
-import { LogOut, Sparkles, Stamp, Users, KeyRound, RefreshCw, AlertTriangle } from 'lucide-react';
+import { LogOut, Sparkles, Stamp, Users, KeyRound, RefreshCw, AlertTriangle, Upload, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { aiSuggestReward } from './actions';
 import { v4 as uuidv4 } from 'uuid';
+import Image from 'next/image';
 
 export default function RestaurantPage() {
   const { session, isLoading, logout } = useSession();
@@ -20,9 +21,10 @@ export default function RestaurantPage() {
   const [loyaltyRewardInput, setLoyaltyRewardInput] = useState('');
   const [referralRewardInput, setReferralRewardInput] = useState('');
   const [googleLinkInput, setGoogleLinkInput] = useState('');
-  const [cardImageUrlInput, setCardImageUrlInput] = useState('');
+  const [cardImageUrlInput, setCardImageUrlInput] = useState<string | null>(null);
   const [pinInput, setPinInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (session) {
@@ -31,7 +33,7 @@ export default function RestaurantPage() {
       setLoyaltyRewardInput(currentRestaurant?.loyaltyReward || '');
       setReferralRewardInput(currentRestaurant?.referralReward || '');
       setGoogleLinkInput(currentRestaurant?.googleLink || '');
-      setCardImageUrlInput(currentRestaurant?.cardImageUrl || '');
+      setCardImageUrlInput(currentRestaurant?.cardImageUrl || null);
       setPinInput(currentRestaurant?.pin || '');
     }
   }, [session]);
@@ -75,7 +77,7 @@ export default function RestaurantPage() {
         loyaltyReward: loyaltyRewardInput,
         referralReward: referralRewardInput,
         googleLink: googleLinkInput,
-        cardImageUrl: cardImageUrlInput,
+        cardImageUrl: cardImageUrlInput || '',
         pin: pinUpdated ? pinInput : restaurant.pin,
         pinEditable: pinUpdated ? false : restaurant.pinEditable,
       };
@@ -100,6 +102,17 @@ export default function RestaurantPage() {
       toast({ title: 'Erreur IA', description: 'Impossible de générer une suggestion.', variant: 'destructive' });
     } finally {
       setIsAiLoading(false);
+    }
+  };
+
+  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (loadEvent) => {
+        setCardImageUrlInput(loadEvent.target?.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -161,7 +174,7 @@ export default function RestaurantPage() {
               <div className="text-xs text-gray-500">Parrainages actifs</div>
             </CardContent>
           </Card>
-        </Card>
+        </div>
 
         <Card>
           <CardHeader>
@@ -203,14 +216,32 @@ export default function RestaurantPage() {
                 placeholder="https://g.page/..."
               />
             </div>
-             <div>
+            <div>
               <label className="text-xs font-semibold text-gray-500 uppercase">Image de la carte</label>
-              <Input
-                value={cardImageUrlInput}
-                onChange={(e) => setCardImageUrlInput(e.target.value)}
-                className="mt-1"
-                placeholder="URL de l'image (https://...)"
-              />
+              <div className="mt-1">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/png, image/jpeg, image/webp"
+                  className="hidden"
+                />
+                {cardImageUrlInput ? (
+                  <div className="relative group w-full aspect-video rounded-md overflow-hidden border">
+                    <Image src={cardImageUrlInput} alt="Aperçu de la carte" fill style={{objectFit: 'cover'}} />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="destructive" size="icon" onClick={() => setCardImageUrlInput(null)}>
+                        <Trash2 className="w-5 h-5"/>
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="w-4 h-4 mr-2"/>
+                    Télécharger une image
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
