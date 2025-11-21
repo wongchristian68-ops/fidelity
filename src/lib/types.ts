@@ -5,11 +5,14 @@ export interface Restaurant {
   googleLink: string;
   stampsGiven: number;
   referralsCount: number;
+  pin: string;
+  pinEditable: boolean;
 }
 
 export interface Client {
   id:string;
   name: string;
+  phone: string;
   cards: { [restoId: string]: number };
   referralCode: string;
   referrer: string | null;

@@ -5,36 +5,54 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { UtensilsIcon } from '@/components/icons/utensils-icon';
-import { saveClient, getClient, getRestaurant, saveRestaurant } from '@/lib/db';
+import { getClient, getRestaurant, saveRestaurant, getClients } from '@/lib/db';
 import type { Client, Restaurant } from '@/lib/types';
 
 export default function AuthPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [restoName, setRestoName] = useState('');
+  const [restoPin, setRestoPin] = useState('');
   const [clientName, setClientName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
 
   const handleRestoLogin = () => {
     const name = restoName.trim();
-    if (!name) {
-      toast({ title: 'Erreur', description: 'Veuillez entrer un nom de restaurant.', variant: 'destructive' });
+    const pin = restoPin.trim();
+
+    if (!name || !pin) {
+      toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
       return;
     }
+
     const id = 'resto_' + name.toLowerCase().replace(/\s+/g, '_');
-    const existing = getRestaurant(id);
-    if (!existing) {
-      const newRestaurant: Restaurant = {
+    let restaurant = getRestaurant(id);
+
+    if (restaurant) {
+      // Login
+      if (restaurant.pin !== pin) {
+        toast({ title: 'Erreur', description: 'Code PIN incorrect.', variant: 'destructive' });
+        return;
+      }
+    } else {
+      // Register
+      if (pin !== '1234') {
+        toast({ title: 'Erreur', description: 'Pour une première connexion, le code PIN doit être "1234".', variant: 'destructive' });
+        return;
+      }
+      restaurant = {
         id,
         name,
+        pin: '1234',
+        pinEditable: true,
         reward: 'Surprise du Chef',
         googleLink: '',
         stampsGiven: 0,
         referralsCount: 0,
       };
-      saveRestaurant(id, newRestaurant);
+      saveRestaurant(id, restaurant);
     }
     sessionStorage.setItem('session', JSON.stringify({ id, role: 'resto', name }));
     router.push('/restaurant');
@@ -42,23 +60,35 @@ export default function AuthPage() {
 
   const handleClientLogin = () => {
     const name = clientName.trim();
-    if (!name) {
-      toast({ title: 'Erreur', description: 'Veuillez entrer votre prénom.', variant: 'destructive' });
+    const phone = clientPhone.trim();
+
+    if (!name || !phone) {
+      toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
       return;
     }
-    const id = 'client_' + name.toLowerCase().replace(/\s+/g, '_');
-    const existing = getClient(id);
-    if (!existing) {
-      const newClient: Client = {
+    
+    let client = Object.values(getClients()).find(c => c.phone === phone);
+
+    if (client) {
+      // Login
+      if(client.name !== name) {
+        toast({ title: 'Erreur', description: 'Ce numéro est déjà associé à un autre prénom.', variant: 'destructive' });
+        return;
+      }
+    } else {
+      // Register
+      const id = 'client_' + Date.now();
+      client = {
         id,
         name,
+        phone,
         cards: {},
         referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
         referrer: null,
       };
-      saveClient(id, newClient);
+      saveClient(id, client);
     }
-    sessionStorage.setItem('session', JSON.stringify({ id, role: 'client', name }));
+    sessionStorage.setItem('session', JSON.stringify({ id: client.id, role: 'client', name }));
     router.push('/client');
   };
 
@@ -85,9 +115,21 @@ export default function AuthPage() {
               onChange={(e) => setRestoName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
             />
+            <Input 
+              id="auth-resto-pin" 
+              type="password"
+              placeholder="Code PIN à 4 chiffres" 
+              value={restoPin}
+              maxLength={4}
+              onChange={(e) => setRestoPin(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
+            />
             <Button onClick={handleRestoLogin} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end hover:opacity-90 transition-opacity">
               Gérer mon Restaurant
             </Button>
+            <p className="text-xs text-gray-500 text-center pt-2">
+              Pour la première connexion, utilisez le PIN "1234".
+            </p>
           </CardContent>
         </Card>
 
@@ -107,6 +149,14 @@ export default function AuthPage() {
               placeholder="Votre prénom"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleClientLogin()}
+            />
+             <Input 
+              id="auth-client-phone" 
+              type="tel"
+              placeholder="Numéro de téléphone"
+              value={clientPhone}
+              onChange={(e) => setClientPhone(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleClientLogin()}
             />
             <Button onClick={handleClientLogin} variant="secondary" className="w-full font-semibold bg-gray-800 text-white hover:bg-gray-700">

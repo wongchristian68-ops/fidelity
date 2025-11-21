@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QrCodeDisplay } from '@/components/restaurant/qr-code';
-import { LogOut, Sparkles, Stamp, Users } from 'lucide-react';
+import { LogOut, Sparkles, Stamp, Users, KeyRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { aiSuggestReward } from './actions';
 
@@ -18,6 +18,7 @@ export default function RestaurantPage() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [rewardInput, setRewardInput] = useState('');
   const [googleLinkInput, setGoogleLinkInput] = useState('');
+  const [pinInput, setPinInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
 
   useEffect(() => {
@@ -26,15 +27,27 @@ export default function RestaurantPage() {
       setRestaurant(currentRestaurant);
       setRewardInput(currentRestaurant?.reward || '');
       setGoogleLinkInput(currentRestaurant?.googleLink || '');
+      setPinInput(currentRestaurant?.pin || '');
     }
   }, [session]);
-  
+
   const handleSaveConfig = () => {
     if (restaurant) {
+      let pinUpdated = false;
+      if (restaurant.pinEditable && pinInput.length === 4 && pinInput !== restaurant.pin) {
+        if (pinInput === '1234') {
+          toast({ title: 'Erreur', description: 'Le nouveau PIN ne peut pas être "1234".', variant: 'destructive' });
+          return;
+        }
+        pinUpdated = true;
+      }
+
       const updatedRestaurant = { 
         ...restaurant, 
         reward: rewardInput,
-        googleLink: googleLinkInput 
+        googleLink: googleLinkInput,
+        pin: pinUpdated ? pinInput : restaurant.pin,
+        pinEditable: pinUpdated ? false : restaurant.pinEditable,
       };
       saveRestaurant(restaurant.id, updatedRestaurant);
       setRestaurant(updatedRestaurant);
@@ -132,6 +145,22 @@ export default function RestaurantPage() {
                 className="mt-1"
                 placeholder="https://g.page/..."
               />
+            </div>
+             <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-2">
+                    <KeyRound className="w-4 h-4" />
+                    Code PIN
+                </label>
+                <Input 
+                    type="password"
+                    value={pinInput}
+                    maxLength={4}
+                    onChange={(e) => e.target.value.match(/^\d{0,4}$/) && setPinInput(e.target.value)}
+                    className="mt-1 font-mono tracking-widest"
+                    disabled={!restaurant.pinEditable}
+                />
+                {!restaurant.pinEditable && <p className="text-xs text-gray-500 mt-1">Votre code PIN ne peut plus être modifié.</p>}
+                 {restaurant.pinEditable && <p className="text-xs text-gray-500 mt-1">Vous ne pouvez changer votre PIN qu'une seule fois.</p>}
             </div>
             <Button onClick={handleSaveConfig} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end">
               Enregistrer
