@@ -29,6 +29,21 @@ export function saveRestaurant(id: string, data: Restaurant): void {
   set('restaurants', restaurants);
 }
 
+export function deleteRestaurant(id: string): void {
+  const restaurants = getRestaurants();
+  delete restaurants[id];
+  set('restaurants', restaurants);
+
+  // Also remove restaurant cards from all clients
+  const clients = getClients();
+  Object.keys(clients).forEach(clientId => {
+    if (clients[clientId].cards[id]) {
+      delete clients[clientId].cards[id];
+    }
+  });
+  set('clients', clients);
+}
+
 // --- Clients ---
 export function getClients(): { [id: string]: Client } {
   return get<{ [id: string]: Client }>('clients') || {};
@@ -42,5 +57,11 @@ export function getClient(id: string): Client | null {
 export function saveClient(id: string, data: Client): void {
   const clients = getClients();
   clients[id] = data;
+  set('clients', clients);
+}
+
+export function deleteClient(id: string): void {
+  const clients = getClients();
+  delete clients[id];
   set('clients', clients);
 }

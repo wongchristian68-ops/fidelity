@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useEffect, useState, useRef, ChangeEvent } from 'react';
 import { useSession } from '@/hooks/use-session';
-import { getRestaurant, saveRestaurant } from '@/lib/db';
+import { getRestaurant, saveRestaurant, deleteRestaurant } from '@/lib/db';
 import type { Restaurant } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,17 @@ import { useToast } from '@/hooks/use-toast';
 import { aiSuggestReward } from './actions';
 import { v4 as uuidv4 } from 'uuid';
 import Image from 'next/image';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function RestaurantPage() {
   const { session, isLoading, logout } = useSession();
@@ -116,6 +128,12 @@ export default function RestaurantPage() {
     }
   };
 
+  const handleDeleteAccount = () => {
+    if (!restaurant) return;
+    deleteRestaurant(restaurant.id);
+    logout();
+  };
+
   if (isLoading || !restaurant) {
     return <div className="p-4 text-center">Chargement...</div>;
   }
@@ -137,7 +155,7 @@ export default function RestaurantPage() {
         </div>
       </header>
 
-      <main className="p-4 space-y-6">
+      <main className="p-4 space-y-6 pb-20">
         <Card className="text-center">
           <CardHeader>
             <CardTitle className="font-headline">Tampon Digital</CardTitle>
@@ -243,6 +261,9 @@ export default function RestaurantPage() {
                 )}
               </div>
             </div>
+            <Button onClick={handleSaveConfig} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end !mt-6">
+              Enregistrer les Modifications
+            </Button>
           </CardContent>
         </Card>
         
@@ -267,9 +288,34 @@ export default function RestaurantPage() {
                 {!restaurant.pinEditable && <p className="text-xs text-gray-500 mt-1">Votre code PIN ne peut plus être modifié.</p>}
                  {restaurant.pinEditable && <p className="text-xs text-gray-500 mt-1">Vous ne pouvez changer votre PIN qu'une seule fois.</p>}
             </div>
-            <Button onClick={handleSaveConfig} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end">
-              Enregistrer les Modifications
-            </Button>
+             <div className="pt-4 border-t">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="w-full">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Supprimer mon restaurant
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="text-destructive" />
+                      Êtes-vous absolument sûr ?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Cette action est irréversible. Toutes les données de votre restaurant, y compris les cartes de vos clients, seront définitivement supprimées.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive hover:bg-destructive/90">
+                      Oui, supprimer mon restaurant
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <p className="text-xs text-gray-400 mt-2 text-center">Conformément au RGPD</p>
+             </div>
           </CardContent>
         </Card>
       </main>

@@ -1,14 +1,26 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/hooks/use-session";
-import { getClient, getRestaurants } from "@/lib/db";
+import { getClient, getRestaurants, deleteClient } from "@/lib/db";
 import type { Client, Restaurant } from "@/lib/types";
 import { LoyaltyCard } from "@/components/client/loyalty-card";
 import { RewardModal } from "@/components/modals/reward-modal";
-import { LogOut, Wallet } from "lucide-react";
+import { LogOut, Wallet, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function CardsPage() {
   const { session, isLoading, logout } = useSession();
@@ -32,6 +44,12 @@ export default function CardsPage() {
       }
     }
   }, [session]);
+
+  const handleDeleteAccount = () => {
+    if (!client) return;
+    deleteClient(client.id);
+    logout();
+  };
   
   if (isLoading || !client) {
     return <div className="p-4 text-center">Chargement...</div>;
@@ -84,6 +102,35 @@ export default function CardsPage() {
           })
         )}
       </main>
+
+       <div className="p-4 mt-8 text-center">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" className="bg-red-50 text-red-600 hover:bg-red-100">
+              <Trash2 className="w-4 h-4 mr-2" />
+              Supprimer mon compte
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="text-destructive"/>
+                Êtes-vous absolument sûr ?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Cette action est irréversible. Toutes vos données, y compris vos cartes de fidélité et vos points, seront définitivement supprimées.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive hover:bg-destructive/90">
+                Oui, supprimer mon compte
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <p className="text-xs text-gray-400 mt-2">Conformément au RGPD</p>
+      </div>
 
       {rewardRestaurant && (
         <RewardModal
