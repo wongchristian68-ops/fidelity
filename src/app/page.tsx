@@ -54,7 +54,7 @@ export default function AuthPage() {
       };
       saveRestaurant(id, restaurant);
     }
-    sessionStorage.setItem('session', JSON.stringify({ id, role: 'resto', name }));
+    sessionStorage.setItem('session', JSON.stringify({ id: restaurant.id, role: 'resto', name: restaurant.name }));
     router.push('/restaurant');
   };
 
