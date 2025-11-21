@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { UtensilsIcon } from '@/components/icons/utensils-icon';
-import { getClient, getRestaurant, saveRestaurant, getClients } from '@/lib/db';
+import { getClient, getRestaurant, saveRestaurant, getClients, saveClient } from '@/lib/db';
 import type { Client, Restaurant } from '@/lib/types';
 
 export default function AuthPage() {
