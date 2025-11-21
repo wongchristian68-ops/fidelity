@@ -56,7 +56,6 @@ export default function CardsPage() {
   }
   
   const cardIds = Object.keys(client.cards);
-  const totalPoints = cardIds.reduce((acc, id) => acc + (client.cards[id]?.stamps || 0), 0);
 
   const handleModalClose = () => {
     setRewardRestaurant(null);
@@ -72,11 +71,6 @@ export default function CardsPage() {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-xl font-bold font-headline">Bonjour, {client.name}</h2>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span>Mes points</span>
-              <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-              <span className="text-orange-600 font-semibold">{totalPoints} pts</span>
-            </div>
           </div>
           <Button variant="ghost" size="icon" onClick={logout} className="text-gray-500 hover:text-red-500">
             <LogOut className="w-5 h-5" />
