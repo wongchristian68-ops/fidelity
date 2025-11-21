@@ -73,7 +73,7 @@ export default function ScanPage() {
 
     // First stamp with a referrer?
     if (isFirstEverStamp && client.referrer && client.referrer.restoId === restoId) {
-       rewardReferrer(client.referrer.code, restoId, resto.referralBonusStamps);
+       rewardReferrer(client.referrer.code, restoId, client.referrer.reward);
        resto.referralsCount = (resto.referralsCount || 0) + 1;
     }
 
@@ -83,7 +83,7 @@ export default function ScanPage() {
     router.push('/client/cards');
   };
 
-  const rewardReferrer = (referralCode: string, restoId: string, bonus: number) => {
+  const rewardReferrer = (referralCode: string, restoId: string, reward: string) => {
     const allClients = getClients();
     const referrerId = Object.keys(allClients).find(id => 
       allClients[id].cards[restoId]?.referralCode === referralCode
@@ -92,9 +92,10 @@ export default function ScanPage() {
     if (referrerId) {
       const referrer = allClients[referrerId];
       if (referrer.cards[restoId]) {
-        referrer.cards[restoId].stamps = (referrer.cards[restoId].stamps || 0) + bonus;
-        saveClient(referrer.id, referrer);
-        console.log(`Parrain ${referrer.name} récompensé avec ${bonus} tampons!`);
+        // Here you would implement how to give the reward.
+        // For now, we'll just log it and maybe notify via a toast or a dedicated "rewards" section.
+        console.log(`Parrain ${referrer.name} a gagné une récompense: "${reward}"!`);
+        // You could save this pending reward on the referrer's object in a future version.
       }
     }
   };

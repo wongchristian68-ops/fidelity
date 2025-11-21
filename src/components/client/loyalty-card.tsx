@@ -32,7 +32,7 @@ export function LoyaltyCard({ restaurant, clientCard }: LoyaltyCardProps) {
       </CardContent>
       <CardFooter className="bg-gray-50/50 p-3 flex-col items-start text-xs border-t">
         <p className="text-gray-500 mb-2">
-          Parrainez un ami et recevez <strong className="text-purple-600">{restaurant.referralBonusStamps} tampons bonus</strong> chez {restaurant.name} !
+          Parrainez un ami et recevez : <strong className="text-purple-600">{restaurant.referralReward}</strong> !
         </p>
         <div className="flex w-full items-center gap-2">
           <div className="flex-1 bg-white border rounded-md p-2 text-center font-mono text-gray-700 tracking-widest">

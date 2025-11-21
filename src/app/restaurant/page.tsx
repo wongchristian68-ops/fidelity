@@ -18,7 +18,7 @@ export default function RestaurantPage() {
   const { toast } = useToast();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loyaltyRewardInput, setLoyaltyRewardInput] = useState('');
-  const [referralBonusInput, setReferralBonusInput] = useState('2');
+  const [referralRewardInput, setReferralRewardInput] = useState('');
   const [googleLinkInput, setGoogleLinkInput] = useState('');
   const [pinInput, setPinInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -28,7 +28,7 @@ export default function RestaurantPage() {
       const currentRestaurant = getRestaurant(session.id);
       setRestaurant(currentRestaurant);
       setLoyaltyRewardInput(currentRestaurant?.loyaltyReward || '');
-      setReferralBonusInput(String(currentRestaurant?.referralBonusStamps || 2));
+      setReferralRewardInput(currentRestaurant?.referralReward || '');
       setGoogleLinkInput(currentRestaurant?.googleLink || '');
       setPinInput(currentRestaurant?.pin || '');
     }
@@ -71,7 +71,7 @@ export default function RestaurantPage() {
       const updatedRestaurant = { 
         ...restaurant, 
         loyaltyReward: loyaltyRewardInput,
-        referralBonusStamps: parseInt(referralBonusInput, 10) || 2,
+        referralReward: referralRewardInput,
         googleLink: googleLinkInput,
         pin: pinUpdated ? pinInput : restaurant.pin,
         pinEditable: pinUpdated ? false : restaurant.pinEditable,
@@ -82,12 +82,16 @@ export default function RestaurantPage() {
     }
   };
 
-  const handleAiSuggest = async () => {
+  const handleAiSuggest = async (rewardType: 'loyalty' | 'referral') => {
     if (!restaurant) return;
     setIsAiLoading(true);
     try {
       const result = await aiSuggestReward(restaurant.name);
-      setLoyaltyRewardInput(result);
+      if (rewardType === 'loyalty') {
+        setLoyaltyRewardInput(result);
+      } else {
+        setReferralRewardInput(result);
+      }
       toast({ title: '✨ Suggestion IA', description: 'Une nouvelle idée de récompense a été générée.' });
     } catch (error) {
       toast({ title: 'Erreur IA', description: 'Impossible de générer une suggestion.', variant: 'destructive' });
@@ -168,20 +172,24 @@ export default function RestaurantPage() {
                   value={loyaltyRewardInput}
                   onChange={(e) => setLoyaltyRewardInput(e.target.value)}
                   placeholder="Ex: Dessert offert" />
-                <Button onClick={handleAiSuggest} disabled={isAiLoading} variant="outline" className="bg-purple-100 text-purple-600 hover:bg-purple-200 border-purple-200">
+                <Button onClick={() => handleAiSuggest('loyalty')} disabled={isAiLoading} variant="outline" className="bg-purple-100 text-purple-600 hover:bg-purple-200 border-purple-200">
                   <Sparkles className="w-4 h-4" />
                 </Button>
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase">Bonus parrainage (en tampons)</label>
-              <Input
-                type="number"
-                value={referralBonusInput}
-                onChange={(e) => setReferralBonusInput(e.target.value)}
-                className="mt-1"
-                placeholder="Ex: 2"
-              />
+              <label className="text-xs font-semibold text-gray-500 uppercase">Récompense de parrainage</label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  value={referralRewardInput}
+                  onChange={(e) => setReferralRewardInput(e.target.value)}
+                  className="mt-1"
+                  placeholder="Ex: Boisson offerte"
+                />
+                 <Button onClick={() => handleAiSuggest('referral')} disabled={isAiLoading} variant="outline" className="bg-purple-100 text-purple-600 hover:bg-purple-200 border-purple-200 mt-1">
+                  <Sparkles className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
              <div>
               <label className="text-xs font-semibold text-gray-500 uppercase">Lien Google Maps pour avis</label>

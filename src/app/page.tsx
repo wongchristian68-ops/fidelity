@@ -30,6 +30,7 @@ export default function AuthPage() {
 
     const id = 'resto_' + name.toLowerCase().replace(/\s+/g, '_');
     let restaurant = getRestaurant(id);
+    let isNewRestaurant = false;
 
     if (restaurant) {
       // Login
@@ -39,13 +40,18 @@ export default function AuthPage() {
       }
     } else {
       // Register
+      if (pin !== '1234') {
+        toast({ title: 'Erreur', description: 'Le code PIN pour un nouveau restaurant doit être "1234".', variant: 'destructive' });
+        return;
+      }
+      isNewRestaurant = true;
       restaurant = {
         id,
         name,
         pin: pin,
         pinEditable: true,
         loyaltyReward: 'Surprise du Chef',
-        referralBonusStamps: 2,
+        referralReward: 'Boisson offerte',
         googleLink: '',
         stampsGiven: 0,
         referralsCount: 0,
@@ -54,7 +60,10 @@ export default function AuthPage() {
       };
       saveRestaurant(id, restaurant);
     }
-    sessionStorage.setItem('session', JSON.stringify({ id: restaurant.id, role: 'resto', name: restaurant.name }));
+    
+    // For new restaurants, use the newly created object for session
+    const sessionRestaurant = isNewRestaurant ? restaurant : getRestaurant(id);
+    sessionStorage.setItem('session', JSON.stringify({ id: sessionRestaurant!.id, role: 'resto', name: sessionRestaurant!.name }));
     router.push('/restaurant');
   };
 

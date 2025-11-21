@@ -2,7 +2,7 @@ export interface Restaurant {
   id: string;
   name: string;
   loyaltyReward: string; // Récompense pour 10 tampons
-  referralBonusStamps: number; // Tampons bonus pour le parrain
+  referralReward: string; // Récompense pour le parrain
   googleLink: string;
   stampsGiven: number;
   referralsCount: number;
@@ -25,6 +25,7 @@ export interface Client {
   referrer: {
     restoId: string;
     code: string;
+    reward: string; // La récompense à donner au parrain
   } | null;
 }
 

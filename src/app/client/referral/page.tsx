@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from '@/hooks/use-session';
-import { getClient, getClients, getRestaurants, saveClient } from '@/lib/db';
+import { getClient, getClients, getRestaurant, getRestaurants, saveClient } from '@/lib/db';
 import type { Client, Restaurant } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,9 @@ export default function ReferralPage() {
     if (!client || !selectedRestoId || !referralCodeInput) return;
     const code = referralCodeInput.trim().toUpperCase();
 
+    const restaurant = getRestaurant(selectedRestoId);
+    if (!restaurant) return;
+
     if (client.referrer) {
       toast({ title: "Vous avez déjà un parrain.", variant: 'destructive' });
       return;
@@ -44,7 +47,7 @@ export default function ReferralPage() {
     const referrerId = Object.keys(allClients).find(id => allClients[id].cards[selectedRestoId]?.referralCode === code);
 
     if (referrerId) {
-      const updatedClient = { ...client, referrer: { restoId: selectedRestoId, code } };
+      const updatedClient = { ...client, referrer: { restoId: selectedRestoId, code, reward: restaurant.referralReward } };
       saveClient(client.id, updatedClient);
       setClient(updatedClient);
       toast({ title: "Parrain validé !", description: "Votre bonus s'activera lors de votre premier tampon dans ce restaurant." });
@@ -68,7 +71,7 @@ export default function ReferralPage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-gray-600">
-            Retrouvez vos codes de parrainage directement sur vos cartes de fidélité respectives. Partagez-les pour gagner des tampons bonus !
+            Retrouvez vos codes de parrainage directement sur vos cartes de fidélité respectives. Partagez-les pour gagner des récompenses !
           </p>
         </CardContent>
       </Card>
