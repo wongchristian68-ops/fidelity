@@ -72,7 +72,7 @@ export default function CardsPage() {
       
       toast({
         title: `Nouveau bonus de parrainage !`,
-        description: `Félicitations ! ${reward.referredClientName} a utilisé votre code. Vous avez gagné: "${reward.reward}" chez ${resto.name}.`,
+        description: `Félicitations ! ${reward.referredClientName} a utilisé votre code chez ${resto.name}. Vous avez gagné: "${reward.reward}".`,
         duration: Infinity,
         action: (
           <div className="flex flex-col gap-2 w-full mt-2">
@@ -87,7 +87,7 @@ export default function CardsPage() {
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, restaurants, dismiss]);
+  }, [client, restaurants]);
 
   const removeReward = (rewardId: string) => {
     if (!client) return;
