@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from 'next/navigation';
@@ -99,18 +100,18 @@ export default function ScanPage() {
     const stampsRequired = resto.stampsRequiredForReward || 10;
     
     // Check for referral reward on first stamp for this card
-    if (isNewCard && clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
+    if (clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
         rewardReferrer(clientCard.referrerInfo.referrerId, restoId, clientCard.referrerInfo.reward, client.name);
         clientCard.referrerInfo.isActivated = true;
         
-        // Also give the referred person their reward
-        // For simplicity, we can just give them a free stamp
-        // Or we can add a new field for referral rewards on the client card
         toast({
             title: `Bonus de parrainage activé !`,
             description: `Grâce à ${clientCard.referrerInfo.referrerName}, vous bénéficiez de : ${resto.referralReward}. Montrez ce message pour en profiter.`,
             duration: 10000,
         });
+
+        // The referral is now consumed, so we can remove the info.
+        delete client.cards[restoId].referrerInfo;
     }
 
 
