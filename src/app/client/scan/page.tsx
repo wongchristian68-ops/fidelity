@@ -8,7 +8,7 @@ import type { Client, Restaurant, StampQrCode, ClientCard } from '@/lib/types';
 import { getClient, getRestaurant, saveClient, saveRestaurant, getClients } from '@/lib/db';
 import { useSession } from '@/hooks/use-session';
 import { textToSpeech } from '../actions';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 export default function ScanPage() {
@@ -18,13 +18,16 @@ export default function ScanPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  useEffect(() => {
+    if (audioUrl && audioRef.current) {
+      audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
+    }
+  }, [audioUrl]);
+
   const playNotification = async (text: string) => {
     try {
       const audioDataUri = await textToSpeech(text);
       setAudioUrl(audioDataUri);
-      setTimeout(() => {
-        audioRef.current?.play();
-      }, 0);
     } catch (e) {
       console.error("Audio notification failed", e);
     }
