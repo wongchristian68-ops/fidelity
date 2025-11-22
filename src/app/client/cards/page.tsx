@@ -87,7 +87,7 @@ export default function CardsPage() {
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, restaurants]);
+  }, [client, restaurants, dismiss]);
 
   const removeReward = (rewardId: string) => {
     if (!client) return;
