@@ -69,7 +69,7 @@ export default function CardsPage() {
       
       toast({
         title: `Nouveau bonus de parrainage !`,
-        description: `Vous avez gagné: "${reward.reward}" chez ${resto.name}.`,
+        description: `Félicitations ! ${reward.referredClientName} a utilisé votre code. Vous avez gagné: "${reward.reward}" chez ${resto.name}.`,
         duration: Infinity,
         action: (
           <div className="flex flex-col gap-2">

@@ -93,7 +93,7 @@ export default function ScanPage() {
     
     // First stamp with a referrer?
     if (isFirstEverStamp && clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
-       rewardReferrer(clientCard.referrerInfo.code, restoId, clientCard.referrerInfo.reward);
+       rewardReferrer(clientCard.referrerInfo.referrerId, restoId, clientCard.referrerInfo.reward, client.name);
        resto.referralsCount = (resto.referralsCount || 0) + 1;
        client.cards[restoId].referrerInfo!.isActivated = true;
     }
@@ -107,14 +107,10 @@ export default function ScanPage() {
     router.push('/client/cards');
   };
 
-  const rewardReferrer = (referralCode: string, restoId: string, reward: string) => {
-    const allClients = getClients();
-    const referrerId = Object.keys(allClients).find(id => 
-      allClients[id].cards[restoId]?.referralCode === referralCode
-    );
+  const rewardReferrer = (referrerId: string, restoId: string, reward: string, referredClientName: string) => {
+    const referrer = getClient(referrerId);
 
-    if (referrerId) {
-      const referrer = allClients[referrerId];
+    if (referrer) {
       if (referrer.cards[restoId]) {
         if (!referrer.pendingReferralRewards) {
           referrer.pendingReferralRewards = [];
@@ -123,6 +119,7 @@ export default function ScanPage() {
           id: uuidv4(),
           restoId: restoId,
           reward: reward,
+          referredClientName: referredClientName,
         });
         saveClient(referrer.id, referrer);
       }

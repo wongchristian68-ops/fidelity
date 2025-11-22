@@ -21,6 +21,8 @@ export interface ClientCard {
     code: string;
     reward: string;
     isActivated: boolean; // Pour savoir si la récompense parrain a été donnée
+    referrerId: string;
+    referrerName: string;
   } | null;
 }
 
@@ -28,6 +30,7 @@ export interface PendingReferralReward {
   id: string; // unique id for the reward
   restoId: string;
   reward: string;
+  referredClientName: string; // Nom du client qui a été parrainé
 }
 
 export interface Client {
