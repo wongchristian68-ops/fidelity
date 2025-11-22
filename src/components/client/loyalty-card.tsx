@@ -15,6 +15,15 @@ interface LoyaltyCardProps {
 export function LoyaltyCard({ restaurant, clientCard }: LoyaltyCardProps) {
   const { toast } = useToast();
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(clientCard.referralCode).then(() => {
+      toast({ title: 'Code copié !' });
+    }).catch(err => {
+      console.error('Copy failed', err);
+      toast({ title: 'Erreur de copie', description: 'Impossible de copier le code sur cet appareil.', variant: 'destructive' });
+    });
+  };
+
   const cardStyle = restaurant.cardImageUrl ? {
     backgroundImage: `url(${restaurant.cardImageUrl})`,
     backgroundSize: 'cover',
@@ -58,6 +67,14 @@ export function LoyaltyCard({ restaurant, clientCard }: LoyaltyCardProps) {
               )}
               onClick={(e) => (e.target as HTMLInputElement).select()}
             />
+             <Button 
+                onClick={handleCopy} 
+                variant="ghost" 
+                size="icon" 
+                className={cn(hasImage ? "text-white hover:bg-white/20 hover:text-white" : "text-gray-500 hover:bg-gray-200")}
+              >
+              <Copy className="w-5 h-5" />
+            </Button>
           </div>
         </CardFooter>
       </div>
