@@ -49,6 +49,7 @@ export function resetRestaurantStats(id: string): void {
   if (restaurant) {
     restaurant.stampsGiven = 0;
     restaurant.referralsCount = 0;
+    restaurant.rewardsGiven = 0;
     saveRestaurant(id, restaurant);
   }
 }

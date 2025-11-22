@@ -6,6 +6,7 @@ export interface Restaurant {
   referralReward: string; // Récompense pour le parrain
   googleLink: string;
   stampsGiven: number;
+  rewardsGiven: number; // Ajout du compteur de récompenses données
   referralsCount: number;
   pin: string;
   pinEditable: boolean;

@@ -92,7 +92,7 @@ export default function ScanPage() {
       client.cards[restoId] = {
         stamps: 0,
         referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
-        referrerInfo: client.cards[restoId]?.referrerInfo || null // This line seems redundant now but safe
+        referrerInfo: client.cards[restoId]?.referrerInfo || null
       };
     }
     
@@ -119,6 +119,7 @@ export default function ScanPage() {
     if (newStamps >= stampsRequired) {
       // The reward is claimed, stamps reset
       client.cards[restoId].stamps = 0; 
+      resto.rewardsGiven = (resto.rewardsGiven || 0) + 1;
       sessionStorage.setItem('rewardUnlocked', restoId);
       playNotification(`Félicitations ! Vous avez débloqué: ${resto.loyaltyReward}`);
     } else {

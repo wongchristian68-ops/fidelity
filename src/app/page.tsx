@@ -56,6 +56,7 @@ export default function AuthPage() {
         googleLink: '',
         stampsGiven: 0,
         referralsCount: 0,
+        rewardsGiven: 0,
         qrCodeValue: null,
         qrCodeExpiry: null,
       };

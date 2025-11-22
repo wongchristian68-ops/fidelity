@@ -164,7 +164,6 @@ export default function RestaurantPage() {
 
   const isQrCodeExpired = restaurant.qrCodeExpiry && Date.now() > restaurant.qrCodeExpiry;
   const qrCodeValue = JSON.stringify({ type: 'stamp', restoId: restaurant.id, value: restaurant.qrCodeValue });
-  const rewardsUnlocked = Math.floor(restaurant.stampsGiven / (restaurant.stampsRequiredForReward || 10));
 
   return (
     <div>
@@ -219,7 +218,7 @@ export default function RestaurantPage() {
               </div>
               <div className="bg-green-50 p-4 rounded-lg">
                 <Gift className="text-green-500 mb-2 w-7 h-7" />
-                <div className="text-2xl font-bold">{rewardsUnlocked}</div>
+                <div className="text-2xl font-bold">{restaurant.rewardsGiven}</div>
                 <div className="text-xs text-gray-500">Récompenses débloquées</div>
               </div>
               <div className="bg-purple-50 p-4 rounded-lg">
