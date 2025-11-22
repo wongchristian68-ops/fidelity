@@ -3,13 +3,13 @@
 
 import { useEffect, useState, useRef, ChangeEvent } from 'react';
 import { useSession } from '@/hooks/use-session';
-import { getRestaurant, saveRestaurant, deleteRestaurant, getClients } from '@/lib/db';
+import { getRestaurant, saveRestaurant, deleteRestaurant, getClients, resetRestaurantStats } from '@/lib/db';
 import type { Restaurant } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QrCodeDisplay } from '@/components/restaurant/qr-code';
-import { LogOut, Sparkles, Stamp, Users, KeyRound, RefreshCw, AlertTriangle, Upload, Trash2, Gift, Users2 } from 'lucide-react';
+import { LogOut, Sparkles, Stamp, Users, KeyRound, RefreshCw, AlertTriangle, Upload, Trash2, Gift, Users2, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { aiSuggestReward } from './actions';
 import { v4 as uuidv4 } from 'uuid';
@@ -43,6 +43,13 @@ export default function RestaurantPage() {
 
   useEffect(() => {
     if (session) {
+      fetchRestaurantData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  const fetchRestaurantData = () => {
+    if (session) {
       const currentRestaurant = getRestaurant(session.id);
       setRestaurant(currentRestaurant);
       setLoyaltyRewardInput(currentRestaurant?.loyaltyReward || '');
@@ -56,7 +63,7 @@ export default function RestaurantPage() {
       const clientsWithCard = allClients.filter(client => client.cards[session.id]);
       setActiveClients(clientsWithCard.length);
     }
-  }, [session]);
+  };
 
   const generateNewQrCode = () => {
     if (restaurant) {
@@ -142,6 +149,14 @@ export default function RestaurantPage() {
     deleteRestaurant(restaurant.id);
     logout();
   };
+
+  const handleResetStats = () => {
+    if (!restaurant) return;
+    resetRestaurantStats(restaurant.id);
+    fetchRestaurantData();
+    toast({ title: "Statistiques réinitialisées", description: "Toutes les données de campagne ont été remises à zéro." });
+  };
+
 
   if (isLoading || !restaurant) {
     return <div className="p-4 text-center">Chargement...</div>;
@@ -323,7 +338,34 @@ export default function RestaurantPage() {
                 {!restaurant.pinEditable && <p className="text-xs text-gray-500 mt-1">Votre code PIN ne peut plus être modifié.</p>}
                  {restaurant.pinEditable && <p className="text-xs text-gray-500 mt-1">Vous ne pouvez changer votre PIN qu'une seule fois.</p>}
             </div>
-             <div className="pt-4 border-t">
+            
+            <div className="pt-4 border-t space-y-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="w-full">
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Réinitialiser les statistiques
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="text-destructive" />
+                      Réinitialiser les statistiques ?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Cette action est irréversible. Toutes les statistiques (tampons, parrainages) seront remises à zéro et <strong className="font-bold">toutes les cartes de vos clients pour ce restaurant seront supprimées.</strong>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleResetStats} className="bg-destructive hover:bg-destructive/90">
+                      Oui, réinitialiser
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" className="w-full">
@@ -357,5 +399,3 @@ export default function RestaurantPage() {
     </div>
   );
 }
-
-    

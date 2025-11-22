@@ -44,6 +44,31 @@ export function deleteRestaurant(id: string): void {
   set('clients', clients);
 }
 
+export function resetRestaurantStats(id: string): void {
+  const restaurant = getRestaurant(id);
+  if (restaurant) {
+    restaurant.stampsGiven = 0;
+    restaurant.referralsCount = 0;
+    saveRestaurant(id, restaurant);
+  }
+
+  // Also remove restaurant cards from all clients
+  const clients = getClients();
+  Object.keys(clients).forEach(clientId => {
+    const client = clients[clientId];
+    if (client.cards[id]) {
+      delete client.cards[id];
+    }
+    // Also remove pending rewards related to this restaurant
+    if (client.pendingReferralRewards) {
+      client.pendingReferralRewards = client.pendingReferralRewards.filter(
+        reward => reward.restoId !== id
+      );
+    }
+    saveClient(clientId, client);
+  });
+}
+
 // --- Clients ---
 export function getClients(): { [id: string]: Client } {
   return get<{ [id: string]: Client }>('clients') || {};
