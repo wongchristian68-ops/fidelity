@@ -154,7 +154,7 @@ export default function RestaurantPage() {
     if (!restaurant) return;
     resetRestaurantStats(restaurant.id);
     fetchRestaurantData();
-    toast({ title: "Statistiques réinitialisées", description: "Toutes les données de campagne ont été remises à zéro." });
+    toast({ title: "Statistiques réinitialisées", description: "Les compteurs de campagne ont été remis à zéro." });
   };
 
 
@@ -354,7 +354,7 @@ export default function RestaurantPage() {
                       Réinitialiser les statistiques ?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      Cette action est irréversible. Toutes les statistiques (tampons, parrainages) seront remises à zéro et <strong className="font-bold">toutes les cartes de vos clients pour ce restaurant seront supprimées.</strong>
+                      Cette action est irréversible. Les compteurs de statistiques (tampons, parrainages) seront remises à zéro, mais <strong className="font-bold">les cartes et points de vos clients ne seront pas affectés.</strong>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
