@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Input } from '../ui/input';
 
 interface LoyaltyCardProps {
   restaurant: Restaurant;
@@ -13,11 +14,6 @@ interface LoyaltyCardProps {
 
 export function LoyaltyCard({ restaurant, clientCard }: LoyaltyCardProps) {
   const { toast } = useToast();
-
-  const copyReferralCode = () => {
-    navigator.clipboard.writeText(clientCard.referralCode);
-    toast({ title: 'Code copié !', description: `Code pour ${restaurant.name} copié.` });
-  };
 
   const cardStyle = restaurant.cardImageUrl ? {
     backgroundImage: `url(${restaurant.cardImageUrl})`,
@@ -51,12 +47,17 @@ export function LoyaltyCard({ restaurant, clientCard }: LoyaltyCardProps) {
             Parrainez un ami et recevez : <strong className={cn("font-semibold", hasImage ? "text-purple-300" : "text-purple-600")}>{restaurant.referralReward}</strong> !
           </p>
           <div className="flex w-full items-center gap-2">
-            <div className={cn("flex-1 rounded-md p-2 text-center font-mono tracking-widest", hasImage ? "bg-black/20 text-white" : "bg-white border text-gray-700")}>
-              {clientCard.referralCode}
-            </div>
-            <Button size="sm" variant="ghost" onClick={copyReferralCode} className={cn(hasImage && "text-white hover:bg-white/20 hover:text-white")}>
-              <Copy className="w-4 h-4" />
-            </Button>
+            <Input
+              readOnly
+              value={clientCard.referralCode}
+              className={cn(
+                "flex-1 rounded-md p-2 text-center font-mono tracking-widest text-base",
+                hasImage
+                  ? "bg-black/20 text-white border-white/20"
+                  : "bg-white border text-gray-700"
+              )}
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+            />
           </div>
         </CardFooter>
       </div>
