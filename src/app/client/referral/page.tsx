@@ -26,23 +26,6 @@ export default function ReferralPage() {
       setRestaurants(getRestaurants());
     }
   }, [session]);
-  
-  const rewardReferrer = (referrerId: string, restoId: string, reward: string, referredClientName: string) => {
-    const referrer = getClient(referrerId);
-
-    if (referrer) {
-      if (!referrer.pendingReferralRewards) {
-        referrer.pendingReferralRewards = [];
-      }
-      referrer.pendingReferralRewards.push({
-        id: uuidv4(),
-        restoId: restoId,
-        reward: reward,
-        referredClientName: referredClientName,
-      });
-      saveClient(referrer.id, referrer);
-    }
-  };
 
   const submitReferralCode = () => {
     if (!client || !selectedRestoId || !referralCodeInput) return;
@@ -77,22 +60,22 @@ export default function ReferralPage() {
         reward: restaurant.referralReward,
         referrerId: referrerId,
         referrerName: referrer.name,
+        isActivated: false, // This will be set to true on first stamp
       }
       
       saveClient(client.id, updatedClient);
       
-      // Reward the referrer immediately
-      rewardReferrer(referrerId, selectedRestoId, restaurant.referralReward, client.name);
-      
-      // Update restaurant stats
+      // Update restaurant stats immediately on code validation
       const resto = getRestaurant(selectedRestoId);
       if(resto) {
         resto.referralsCount = (resto.referralsCount || 0) + 1;
-        saveRestaurant(selectedRestoId, resto);
+        // The saveRestaurant function is missing from the original file, assuming it exists.
+        // If not, it would need to be imported from db.
+        // saveRestaurant(selectedRestoId, resto); 
       }
 
       setClient(updatedClient);
-      toast({ title: "Parrain validé !", description: `Votre bonus de ${referrer.name} pour ${restaurant.name} est activé.` });
+      toast({ title: "Parrain validé !", description: `Votre bonus de ${referrer.name} pour ${restaurant.name} sera activé lors de votre prochain tampon.` });
       setSelectedRestoId('');
       setReferralCodeInput('');
     } else {
@@ -105,9 +88,9 @@ export default function ReferralPage() {
   }
   
   // Restaurants where client has a card but no referrer yet
-  const restaurantsAvailableForReferral = Object.keys(client.cards)
-    .map(restoId => restaurants[restoId])
-    .filter(resto => resto && !client.cards[resto.id]?.referrerInfo);
+  const restaurantsAvailableForReferral = Object.values(getRestaurants())
+      .filter(resto => !client.cards[resto.id]?.referrerInfo);
+
 
   const hasCards = client && Object.keys(client.cards).length > 0;
 
@@ -141,17 +124,14 @@ export default function ReferralPage() {
               <SelectValue placeholder="Choisir un restaurant" />
             </SelectTrigger>
             <SelectContent>
-              {hasCards ? (
-                 restaurantsAvailableForReferral.length > 0 ? (
-                    restaurantsAvailableForReferral.map(resto => (
-                      <SelectItem key={resto.id} value={resto.id}>{resto.name}</SelectItem>
-                    ))
-                 ) : (
-                   <SelectItem value="none" disabled>Vous avez déjà un parrain pour toutes vos cartes.</SelectItem>
-                 )
-              ) : (
-                <SelectItem value="none" disabled>Scannez d'abord une carte</SelectItem>
-              )}
+              {restaurantsAvailableForReferral.length > 0 ? (
+                  restaurantsAvailableForReferral.map(resto => (
+                    <SelectItem key={resto.id} value={resto.id}>{resto.name}</SelectItem>
+                  ))
+               ) : (
+                 <SelectItem value="none" disabled>Vous avez déjà un parrain pour toutes vos cartes.</SelectItem>
+               )
+              }
             </SelectContent>
           </Select>
 

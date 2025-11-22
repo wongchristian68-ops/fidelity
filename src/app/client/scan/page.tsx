@@ -33,6 +33,22 @@ export default function ScanPage() {
     }
   }
 
+  const rewardReferrer = (referrerId: string, restoId: string, reward: string, referredClientName: string) => {
+    const referrer = getClient(referrerId);
+    if (referrer) {
+      if (!referrer.pendingReferralRewards) {
+        referrer.pendingReferralRewards = [];
+      }
+      referrer.pendingReferralRewards.push({
+        id: uuidv4(),
+        restoId: restoId,
+        reward: reward,
+        referredClientName: referredClientName,
+      });
+      saveClient(referrer.id, referrer);
+    }
+  };
+
   const handleScanSuccess = (decodedText: string) => {
     if (!session || session.role !== 'client') return;
     
@@ -67,19 +83,36 @@ export default function ScanPage() {
       toast({ title: "Erreur", description: "Client non trouvé.", variant: "destructive" });
       return;
     }
+    
+    const isNewCard = !client.cards[restoId];
 
-    const isFirstEverStamp = !client.cards[restoId];
-    if (isFirstEverStamp) {
+    if (isNewCard) {
       client.cards[restoId] = {
         stamps: 0,
         referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
-        referrerInfo: client.cards[restoId]?.referrerInfo || null
+        referrerInfo: client.cards[restoId]?.referrerInfo || null // This line seems redundant now but safe
       };
     }
     
     const clientCard = client.cards[restoId];
     let newStamps = clientCard.stamps + 1;
     const stampsRequired = resto.stampsRequiredForReward || 10;
+    
+    // Check for referral reward on first stamp for this card
+    if (isNewCard && clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
+        rewardReferrer(clientCard.referrerInfo.referrerId, restoId, clientCard.referrerInfo.reward, client.name);
+        clientCard.referrerInfo.isActivated = true;
+        
+        // Also give the referred person their reward
+        // For simplicity, we can just give them a free stamp
+        // Or we can add a new field for referral rewards on the client card
+        toast({
+            title: `Bonus de parrainage activé !`,
+            description: `Grâce à ${clientCard.referrerInfo.referrerName}, vous bénéficiez de : ${resto.referralReward}. Montrez ce message pour en profiter.`,
+            duration: 10000,
+        });
+    }
+
 
     if (newStamps >= stampsRequired) {
       // The reward is claimed, stamps reset
