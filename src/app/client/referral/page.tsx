@@ -32,11 +32,6 @@ export default function ReferralPage() {
 
     const restaurant = getRestaurant(selectedRestoId);
     if (!restaurant) return;
-
-    if (client.referrer) {
-      toast({ title: "Vous avez déjà un parrain.", variant: 'destructive' });
-      return;
-    }
     
     if (client.cards[selectedRestoId]?.referralCode === code) {
       toast({ title: "Vous ne pouvez pas vous parrainer vous-même.", variant: 'destructive' });
@@ -47,10 +42,26 @@ export default function ReferralPage() {
     const referrerId = Object.keys(allClients).find(id => allClients[id].cards[selectedRestoId]?.referralCode === code);
 
     if (referrerId) {
-      const updatedClient = { ...client, referrer: { restoId: selectedRestoId, code, reward: restaurant.referralReward } };
+      const updatedClient = { ...client };
+      if (!updatedClient.cards[selectedRestoId]) {
+         updatedClient.cards[selectedRestoId] = {
+           stamps: 0,
+           referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+           referrerInfo: null
+         };
+      }
+      
+      updatedClient.cards[selectedRestoId].referrerInfo = {
+        code,
+        reward: restaurant.referralReward,
+        isActivated: false,
+      }
+      
       saveClient(client.id, updatedClient);
       setClient(updatedClient);
-      toast({ title: "Parrain validé !", description: "Votre bonus s'activera lors de votre premier tampon dans ce restaurant." });
+      toast({ title: "Parrain validé !", description: `Votre bonus pour ${restaurant.name} s'activera lors de votre premier tampon.` });
+      setSelectedRestoId('');
+      setReferralCodeInput('');
     } else {
       toast({ title: "Code parrain inconnu", description: "Ce code n'est pas valide pour le restaurant sélectionné.", variant: 'destructive' });
     }
@@ -60,8 +71,12 @@ export default function ReferralPage() {
     return <div className="p-4 text-center">Chargement...</div>;
   }
   
-  const clientHasCards = client && Object.keys(client.cards).length > 0;
-  const restaurantsWithCards = clientHasCards ? Object.keys(client.cards).map(id => restaurants[id]).filter(Boolean) : [];
+  // Restaurants where client has a card but no referrer yet
+  const restaurantsAvailableForReferral = Object.keys(client.cards)
+    .map(restoId => restaurants[restoId])
+    .filter(resto => resto && !client.cards[resto.id]?.referrerInfo);
+
+  const hasCards = client && Object.keys(client.cards).length > 0;
 
   return (
     <div className="p-4 space-y-6">
@@ -87,16 +102,20 @@ export default function ReferralPage() {
           <Select
             onValueChange={setSelectedRestoId}
             value={selectedRestoId}
-            disabled={!!client.referrer || !clientHasCards}
+            disabled={restaurantsAvailableForReferral.length === 0}
           >
             <SelectTrigger>
               <SelectValue placeholder="Choisir un restaurant" />
             </SelectTrigger>
             <SelectContent>
-              {clientHasCards ? (
-                restaurantsWithCards.map(resto => (
-                  <SelectItem key={resto.id} value={resto.id}>{resto.name}</SelectItem>
-                ))
+              {hasCards ? (
+                 restaurantsAvailableForReferral.length > 0 ? (
+                    restaurantsAvailableForReferral.map(resto => (
+                      <SelectItem key={resto.id} value={resto.id}>{resto.name}</SelectItem>
+                    ))
+                 ) : (
+                   <SelectItem value="none" disabled>Vous avez déjà un parrain pour toutes vos cartes.</SelectItem>
+                 )
               ) : (
                 <SelectItem value="none" disabled>Scannez d'abord une carte</SelectItem>
               )}
@@ -110,21 +129,27 @@ export default function ReferralPage() {
               className="flex-1 uppercase font-mono"
               value={referralCodeInput}
               onChange={(e) => setReferralCodeInput(e.target.value)}
-              disabled={!!client.referrer}
+              disabled={!selectedRestoId}
             />
             <Button
               onClick={submitReferralCode}
               className="bg-gray-800 text-white font-semibold hover:bg-gray-700"
-              disabled={!!client.referrer || !selectedRestoId || !referralCodeInput}
+              disabled={!selectedRestoId || !referralCodeInput}
             >
               Valider
             </Button>
           </div>
-          {client.referrer && (
-            <p className="text-sm text-green-700 bg-green-100 p-3 rounded-lg">
-              Parrainage activé ! Vous recevrez votre récompense lors de votre prochain tampon chez {restaurants[client.referrer.restoId]?.name}.
-            </p>
-          )}
+          {Object.keys(client.cards).map(restoId => {
+            const card = client.cards[restoId];
+            if (card.referrerInfo) {
+              return (
+                <p key={restoId} className="text-sm text-green-700 bg-green-100 p-3 rounded-lg">
+                  Parrainage activé pour {restaurants[restoId]?.name} ! Vous recevrez votre récompense lors de votre prochain tampon.
+                </p>
+              )
+            }
+            return null;
+          })}
         </CardContent>
       </Card>
     </div>

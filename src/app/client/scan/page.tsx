@@ -73,6 +73,7 @@ export default function ScanPage() {
       client.cards[restoId] = {
         stamps: 0,
         referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+        referrerInfo: client.cards[restoId]?.referrerInfo || null
       };
     }
     
@@ -90,16 +91,16 @@ export default function ScanPage() {
        playNotification(`Tampon ajouté chez ${resto.name}.`);
     }
     
+    // First stamp with a referrer?
+    if (isFirstEverStamp && clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
+       rewardReferrer(clientCard.referrerInfo.code, restoId, clientCard.referrerInfo.reward);
+       resto.referralsCount = (resto.referralsCount || 0) + 1;
+       client.cards[restoId].referrerInfo!.isActivated = true;
+    }
+
     saveClient(client.id, client);
     
     resto.stampsGiven = (resto.stampsGiven || 0) + 1;
-
-    // First stamp with a referrer?
-    if (isFirstEverStamp && client.referrer && client.referrer.restoId === restoId) {
-       rewardReferrer(client.referrer.code, restoId, client.referrer.reward);
-       resto.referralsCount = (resto.referralsCount || 0) + 1;
-    }
-
     saveRestaurant(restoId, resto);
     
     toast({ title: "Succès!", description: `Tampon ajouté chez ${resto.name}!` });

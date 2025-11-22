@@ -17,6 +17,11 @@ export interface Restaurant {
 export interface ClientCard {
   stamps: number;
   referralCode: string;
+  referrerInfo?: { // Information sur qui a parrainé ce client pour CETTE carte
+    code: string;
+    reward: string;
+    isActivated: boolean; // Pour savoir si la récompense parrain a été donnée
+  } | null;
 }
 
 export interface PendingReferralReward {
@@ -30,11 +35,7 @@ export interface Client {
   name: string;
   phone: string;
   cards: { [restoId: string]: ClientCard };
-  referrer: {
-    restoId: string;
-    code: string;
-    reward: string; // La récompense à donner au parrain
-  } | null;
+  // L'ancien `referrer` est maintenant dans ClientCard.
   pendingReferralRewards?: PendingReferralReward[];
 }
 

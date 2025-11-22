@@ -93,7 +93,6 @@ export default function AuthPage() {
         name,
         phone,
         cards: {},
-        referrer: null,
       };
       saveClient(id, client);
     }
