@@ -107,7 +107,7 @@ export default function AuthPage() {
         <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
           <UtensilsIcon className="w-10 h-10 text-orange-600" />
         </div>
-        <h1 className="text-4xl font-bold text-gray-900 font-headline">StampJoy</h1>
+        <h1 className="text-4xl font-bold text-gray-900 font-headline">Fidélité & Partage</h1>
         <p className="text-gray-500 mt-2">Fidélité & Parrainage Simplifiés</p>
       </div>
 
