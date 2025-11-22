@@ -101,7 +101,7 @@ export default function ScanPage() {
   };
 
   const handleScanError = (errorMessage: string) => {
-    // console.error(errorMessage);
+     // Les erreurs sont gérées directement dans le composant QrScanner
   };
 
   return (
@@ -115,7 +115,6 @@ export default function ScanPage() {
                 onScanSuccess={handleScanSuccess}
                 onScanError={handleScanError}
             />
-            <p className="text-center text-xs text-gray-500 mt-4">Cherchez le QR code à la caisse du restaurant</p>
         </CardContent>
        </Card>
     </div>
