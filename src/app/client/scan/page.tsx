@@ -7,11 +7,27 @@ import QrScanner from '@/components/client/qr-scanner';
 import type { Client, Restaurant, StampQrCode, ClientCard } from '@/lib/types';
 import { getClient, getRestaurant, saveClient, saveRestaurant, getClients } from '@/lib/db';
 import { useSession } from '@/hooks/use-session';
+import { textToSpeech } from '../actions';
+import { useState, useRef } from 'react';
 
 export default function ScanPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { session } = useSession();
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const playNotification = async (text: string) => {
+    try {
+      const audioDataUri = await textToSpeech(text);
+      setAudioUrl(audioDataUri);
+      setTimeout(() => {
+        audioRef.current?.play();
+      }, 0);
+    } catch (e) {
+      console.error("Audio notification failed", e);
+    }
+  }
 
   const handleScanSuccess = (decodedText: string) => {
     if (!session || session.role !== 'client') return;
@@ -63,8 +79,10 @@ export default function ScanPage() {
       // The reward is claimed, stamps reset
       client.cards[restoId].stamps = 0; 
       sessionStorage.setItem('rewardUnlocked', restoId);
+      playNotification(`Félicitations ! Vous avez débloqué: ${resto.loyaltyReward}`);
     } else {
        client.cards[restoId].stamps = newStamps;
+       playNotification(`Tampon ajouté chez ${resto.name}.`);
     }
     
     saveClient(client.id, client);
@@ -117,6 +135,7 @@ export default function ScanPage() {
             />
         </CardContent>
        </Card>
+       {audioUrl && <audio ref={audioRef} src={audioUrl} />}
     </div>
   );
 }
