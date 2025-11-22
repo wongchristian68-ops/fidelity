@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from '@/hooks/use-session';
-import { getClient, getClients, getRestaurant, getRestaurants, saveClient } from '@/lib/db';
+import { getClient, getClients, getRestaurant, getRestaurants, saveClient, saveRestaurant } from '@/lib/db';
 import type { Client, Restaurant } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,9 +69,7 @@ export default function ReferralPage() {
       const resto = getRestaurant(selectedRestoId);
       if(resto) {
         resto.referralsCount = (resto.referralsCount || 0) + 1;
-        // The saveRestaurant function is missing from the original file, assuming it exists.
-        // If not, it would need to be imported from db.
-        // saveRestaurant(selectedRestoId, resto); 
+        saveRestaurant(selectedRestoId, resto); 
       }
 
       setClient(updatedClient);
