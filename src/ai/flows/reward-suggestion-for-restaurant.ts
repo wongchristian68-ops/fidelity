@@ -11,6 +11,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {googleAI} from '@genkit-ai/google-genai';
 
 const SuggestRewardInputSchema = z.object({
   restaurantName: z.string().describe('The name of the restaurant.'),
@@ -30,6 +31,7 @@ const suggestRewardPrompt = ai.definePrompt({
   name: 'suggestRewardPrompt',
   input: {schema: SuggestRewardInputSchema},
   output: {schema: SuggestRewardOutputSchema},
+  model: googleAI.model('gemini-1.5-flash-latest'),
   prompt: `You are a marketing expert specializing in restaurant loyalty programs. Suggest a reward that would be attractive to customers of {{restaurantName}}. Be creative and enticing, but also practical for the restaurant to offer. Suggest only the reward, not any other text.`,  
 });
 

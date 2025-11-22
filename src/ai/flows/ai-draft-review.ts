@@ -10,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {googleAI} from '@genkit-ai/google-genai';
 
 const AiDraftReviewInputSchema = z.object({
   restaurantName: z.string().describe('The name of the restaurant.'),
@@ -31,6 +32,7 @@ const aiDraftReviewPrompt = ai.definePrompt({
   name: 'aiDraftReviewPrompt',
   input: {schema: AiDraftReviewInputSchema},
   output: {schema: AiDraftReviewOutputSchema},
+  model: googleAI.model('gemini-1.5-flash-latest'),
   prompt: `You are a helpful AI assistant that helps users draft reviews for restaurants.
 
   Generate a positive and concise review (around 50 words) for the restaurant "{{restaurantName}}". Focus on the great aspects of the dining experience.
