@@ -3,13 +3,13 @@
 
 import { useEffect, useState, useRef, ChangeEvent } from 'react';
 import { useSession } from '@/hooks/use-session';
-import { getRestaurant, saveRestaurant, deleteRestaurant } from '@/lib/db';
+import { getRestaurant, saveRestaurant, deleteRestaurant, getClients } from '@/lib/db';
 import type { Restaurant } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QrCodeDisplay } from '@/components/restaurant/qr-code';
-import { LogOut, Sparkles, Stamp, Users, KeyRound, RefreshCw, AlertTriangle, Upload, Trash2 } from 'lucide-react';
+import { LogOut, Sparkles, Stamp, Users, KeyRound, RefreshCw, AlertTriangle, Upload, Trash2, Gift, Users2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { aiSuggestReward } from './actions';
 import { v4 as uuidv4 } from 'uuid';
@@ -37,6 +37,7 @@ export default function RestaurantPage() {
   const [pinInput, setPinInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeClients, setActiveClients] = useState(0);
 
   useEffect(() => {
     if (session) {
@@ -47,6 +48,10 @@ export default function RestaurantPage() {
       setGoogleLinkInput(currentRestaurant?.googleLink || '');
       setCardImageUrlInput(currentRestaurant?.cardImageUrl || null);
       setPinInput(currentRestaurant?.pin || '');
+
+      const allClients = Object.values(getClients());
+      const clientsWithCard = allClients.filter(client => client.cards[session.id]);
+      setActiveClients(clientsWithCard.length);
     }
   }, [session]);
 
@@ -140,6 +145,7 @@ export default function RestaurantPage() {
 
   const isQrCodeExpired = restaurant.qrCodeExpiry && Date.now() > restaurant.qrCodeExpiry;
   const qrCodeValue = JSON.stringify({ type: 'stamp', restoId: restaurant.id, value: restaurant.qrCodeValue });
+  const rewardsUnlocked = Math.floor(restaurant.stampsGiven / 10);
 
   return (
     <div>
@@ -177,22 +183,33 @@ export default function RestaurantPage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <Stamp className="text-orange-500 mb-2 w-8 h-8" />
-              <div className="text-2xl font-bold">{restaurant.stampsGiven}</div>
-              <div className="text-xs text-gray-500">Tampons donnés</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <Users className="text-purple-500 mb-2 w-8 h-8" />
-              <div className="text-2xl font-bold">{restaurant.referralsCount}</div>
-              <div className="text-xs text-gray-500">Parrainages actifs</div>
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline">Statistiques</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+              <div className="bg-orange-50 p-4 rounded-lg">
+                <Stamp className="text-orange-500 mb-2 w-7 h-7" />
+                <div className="text-2xl font-bold">{restaurant.stampsGiven}</div>
+                <div className="text-xs text-gray-500">Tampons donnés</div>
+              </div>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <Users2 className="text-blue-500 mb-2 w-7 h-7" />
+                <div className="text-2xl font-bold">{activeClients}</div>
+                <div className="text-xs text-gray-500">Clients actifs</div>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg">
+                <Gift className="text-green-500 mb-2 w-7 h-7" />
+                <div className="text-2xl font-bold">{rewardsUnlocked}</div>
+                <div className="text-xs text-gray-500">Récompenses débloquées</div>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <Users className="text-purple-500 mb-2 w-7 h-7" />
+                <div className="text-2xl font-bold">{restaurant.referralsCount}</div>
+                <div className="text-xs text-gray-500">Parrainages activés</div>
+              </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -322,3 +339,5 @@ export default function RestaurantPage() {
     </div>
   );
 }
+
+    
