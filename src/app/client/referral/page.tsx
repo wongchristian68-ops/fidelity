@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -45,6 +46,11 @@ export default function ReferralPage() {
     if (referrerId) {
       const referrer = getClient(referrerId);
       if (!referrer) return;
+
+      if (referrer.cards[selectedRestoId]?.referrerInfo?.referrerId === client.id) {
+        toast({ title: "Parrainage impossible", description: "Vous ne pouvez pas parrainer quelqu'un qui vous a déjà parrainé.", variant: 'destructive' });
+        return;
+      }
 
       const updatedClient = { ...client };
       if (!updatedClient.cards[selectedRestoId]) {
