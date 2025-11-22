@@ -28,6 +28,24 @@ export default function ReferralPage() {
     }
   }, [session]);
 
+  const isCircularReferral = (potentialReferrerId: string, currentClientId: string, restoId: string, allClients: {[id: string]: Client}): boolean => {
+    let parentId = allClients[currentClientId]?.cards[restoId]?.referrerInfo?.referrerId;
+    let currentId = currentClientId;
+
+    // We go up the sponsorship chain
+    while (parentId) {
+      if (parentId === potentialReferrerId) {
+        return true; // Loop detected
+      }
+      currentId = parentId;
+      const parentClient = allClients[currentId];
+      parentId = parentClient?.cards[restoId]?.referrerInfo?.referrerId;
+    }
+    
+    return false; // No loop found
+  };
+
+
   const submitReferralCode = () => {
     if (!client || !selectedRestoId || !referralCodeInput) return;
     const code = referralCodeInput.trim().toUpperCase();
@@ -47,9 +65,9 @@ export default function ReferralPage() {
       const referrer = getClient(referrerId);
       if (!referrer) return;
 
-      if (referrer.cards[selectedRestoId]?.referrerInfo?.referrerId === client.id) {
-        toast({ title: "Parrainage impossible", description: "Vous ne pouvez pas parrainer quelqu'un qui vous a déjà parrainé.", variant: 'destructive' });
-        return;
+      if (isCircularReferral(client.id, referrerId, selectedRestoId, allClients)) {
+          toast({ title: "Parrainage impossible", description: "Vous ne pouvez pas parrainer quelqu'un qui est dans votre chaîne de parrainage.", variant: 'destructive' });
+          return;
       }
 
       const updatedClient = { ...client };
