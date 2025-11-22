@@ -65,18 +65,8 @@ body {
 }
 
 @layer components {
-  .stamp-grid {
-    @apply grid grid-cols-5 gap-2;
-  }
-  .stamp {
-    @apply aspect-square rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-lg text-gray-400 bg-gray-50;
-  }
   .stamp.filled {
-    @apply border-none bg-primary text-white;
     animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
-  .stamp.reward {
-    @apply border-accent text-accent bg-amber-100;
   }
 }
 

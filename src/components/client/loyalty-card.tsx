@@ -26,6 +26,7 @@ export function LoyaltyCard({ restaurant, clientCard }: LoyaltyCardProps) {
   } : {};
   
   const hasImage = !!restaurant.cardImageUrl;
+  const stampsRequired = restaurant.stampsRequiredForReward || 10;
 
   return (
     <Card className="relative overflow-hidden" style={cardStyle}>
@@ -39,11 +40,11 @@ export function LoyaltyCard({ restaurant, clientCard }: LoyaltyCardProps) {
             </CardDescription>
           </div>
           <span className={cn("text-xs bg-gray-100/80 px-2 py-1 rounded-md text-gray-800 font-medium", hasImage && "bg-white/90")}>
-            {clientCard.stamps}/10
+            {clientCard.stamps}/{stampsRequired}
           </span>
         </CardHeader>
         <CardContent>
-          <StampGrid stamps={clientCard.stamps} hasImage={hasImage} />
+          <StampGrid stamps={clientCard.stamps} totalStamps={stampsRequired} hasImage={hasImage} />
         </CardContent>
         <CardFooter className="bg-gray-50/10 p-3 flex-col items-start text-xs border-t border-white/20">
           <p className={cn("mb-2", hasImage ? "text-gray-200" : "text-gray-500")}>

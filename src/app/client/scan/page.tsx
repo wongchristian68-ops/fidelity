@@ -75,8 +75,9 @@ export default function ScanPage() {
     
     const clientCard = client.cards[restoId];
     let newStamps = clientCard.stamps + 1;
+    const stampsRequired = resto.stampsRequiredForReward || 10;
 
-    if (newStamps >= 10) {
+    if (newStamps >= stampsRequired) {
       // The reward is claimed, stamps reset
       client.cards[restoId].stamps = 0; 
       sessionStorage.setItem('rewardUnlocked', restoId);

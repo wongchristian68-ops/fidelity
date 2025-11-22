@@ -51,6 +51,7 @@ export default function AuthPage() {
         pin: pin,
         pinEditable: true,
         loyaltyReward: 'Surprise du Chef',
+        stampsRequiredForReward: 10,
         referralReward: 'Boisson offerte',
         googleLink: '',
         stampsGiven: 0,
@@ -62,7 +63,7 @@ export default function AuthPage() {
     }
     
     // For new restaurants, use the newly created object for session
-    const sessionRestaurant = isNewRestaurant ? restaurant : getRestaurant(id);
+    const sessionRestaurant = restaurant;
     sessionStorage.setItem('session', JSON.stringify({ id: sessionRestaurant!.id, role: 'resto', name: sessionRestaurant!.name }));
     router.push('/restaurant');
   };

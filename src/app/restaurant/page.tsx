@@ -25,12 +25,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Label } from '@/components/ui/label';
 
 export default function RestaurantPage() {
   const { session, isLoading, logout } = useSession();
   const { toast } = useToast();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loyaltyRewardInput, setLoyaltyRewardInput] = useState('');
+  const [stampsRequiredInput, setStampsRequiredInput] = useState(10);
   const [referralRewardInput, setReferralRewardInput] = useState('');
   const [googleLinkInput, setGoogleLinkInput] = useState('');
   const [cardImageUrlInput, setCardImageUrlInput] = useState<string | null>(null);
@@ -44,6 +46,7 @@ export default function RestaurantPage() {
       const currentRestaurant = getRestaurant(session.id);
       setRestaurant(currentRestaurant);
       setLoyaltyRewardInput(currentRestaurant?.loyaltyReward || '');
+      setStampsRequiredInput(currentRestaurant?.stampsRequiredForReward || 10);
       setReferralRewardInput(currentRestaurant?.referralReward || '');
       setGoogleLinkInput(currentRestaurant?.googleLink || '');
       setCardImageUrlInput(currentRestaurant?.cardImageUrl || null);
@@ -92,6 +95,7 @@ export default function RestaurantPage() {
       const updatedRestaurant = { 
         ...restaurant, 
         loyaltyReward: loyaltyRewardInput,
+        stampsRequiredForReward: stampsRequiredInput,
         referralReward: referralRewardInput,
         googleLink: googleLinkInput,
         cardImageUrl: cardImageUrlInput || '',
@@ -145,7 +149,7 @@ export default function RestaurantPage() {
 
   const isQrCodeExpired = restaurant.qrCodeExpiry && Date.now() > restaurant.qrCodeExpiry;
   const qrCodeValue = JSON.stringify({ type: 'stamp', restoId: restaurant.id, value: restaurant.qrCodeValue });
-  const rewardsUnlocked = Math.floor(restaurant.stampsGiven / 10);
+  const rewardsUnlocked = Math.floor(restaurant.stampsGiven / (restaurant.stampsRequiredForReward || 10));
 
   return (
     <div>
@@ -216,20 +220,34 @@ export default function RestaurantPage() {
             <CardTitle className="font-headline">Configuration</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase">Récompense de fidélité (pour 10 tampons)</label>
-              <div className="flex gap-2 mt-1">
-                <Input 
-                  value={loyaltyRewardInput}
-                  onChange={(e) => setLoyaltyRewardInput(e.target.value)}
-                  placeholder="Ex: Dessert offert" />
-                <Button onClick={() => handleAiSuggest('loyalty')} disabled={isAiLoading} variant="outline" className="bg-purple-100 text-purple-600 hover:bg-purple-200 border-purple-200">
-                  <Sparkles className="w-4 h-4" />
-                </Button>
-              </div>
+             <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2">
+                    <Label htmlFor="loyalty-reward" className="text-xs font-semibold text-gray-500 uppercase">Récompense de fidélité</Label>
+                    <div className="flex gap-2 mt-1">
+                        <Input
+                        id="loyalty-reward"
+                        value={loyaltyRewardInput}
+                        onChange={(e) => setLoyaltyRewardInput(e.target.value)}
+                        placeholder="Ex: Dessert offert" />
+                        <Button onClick={() => handleAiSuggest('loyalty')} disabled={isAiLoading} variant="outline" className="bg-purple-100 text-purple-600 hover:bg-purple-200 border-purple-200">
+                            <Sparkles className="w-4 h-4" />
+                        </Button>
+                    </div>
+                </div>
+                <div>
+                    <Label htmlFor="stamps-required" className="text-xs font-semibold text-gray-500 uppercase">Nb. Tampons</Label>
+                    <Input
+                        id="stamps-required"
+                        type="number"
+                        value={stampsRequiredInput}
+                        onChange={(e) => setStampsRequiredInput(parseInt(e.target.value, 10) || 1)}
+                        className="mt-1"
+                        min="1"
+                    />
+                </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase">Récompense de parrainage</label>
+              <Label className="text-xs font-semibold text-gray-500 uppercase">Récompense de parrainage</Label>
               <div className="flex gap-2 mt-1">
                 <Input
                   value={referralRewardInput}
@@ -243,7 +261,7 @@ export default function RestaurantPage() {
               </div>
             </div>
              <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase">Lien Google Maps pour avis</label>
+              <Label className="text-xs font-semibold text-gray-500 uppercase">Lien Google Maps pour avis</Label>
               <Input
                 value={googleLinkInput}
                 onChange={(e) => setGoogleLinkInput(e.target.value)}
@@ -252,7 +270,7 @@ export default function RestaurantPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase">Image de la carte</label>
+              <Label className="text-xs font-semibold text-gray-500 uppercase">Image de la carte</Label>
               <div className="mt-1">
                 <input
                   type="file"
@@ -290,10 +308,10 @@ export default function RestaurantPage() {
           </CardHeader>
           <CardContent className="space-y-4">
              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-2">
+                <Label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-2">
                     <KeyRound className="w-4 h-4" />
                     Code PIN
-                </label>
+                </Label>
                 <Input 
                     type="password"
                     value={pinInput}

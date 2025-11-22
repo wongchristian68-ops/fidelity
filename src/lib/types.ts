@@ -1,7 +1,8 @@
 export interface Restaurant {
   id: string;
   name: string;
-  loyaltyReward: string; // Récompense pour 10 tampons
+  loyaltyReward: string; // Récompense pour X tampons
+  stampsRequiredForReward: number; // Nombre de tampons pour la récompense
   referralReward: string; // Récompense pour le parrain
   googleLink: string;
   stampsGiven: number;
