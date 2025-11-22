@@ -68,7 +68,7 @@ export default function ScanPage() {
       }
       
       if (data.type === 'stamp' && data.restoId) {
-        addStamp(data.restoId, resto);
+        addStamp(data.restoId, resto, data.value);
       } else {
         toast({ title: "Code QR invalide", variant: "destructive" });
       }
@@ -77,7 +77,7 @@ export default function ScanPage() {
     }
   };
 
-  const addStamp = (restoId: string, resto: Restaurant) => {
+  const addStamp = (restoId: string, resto: Restaurant, qrCodeValue: string) => {
     if (!session) return;
     
     let client = getClient(session.id);
@@ -92,11 +92,25 @@ export default function ScanPage() {
       client.cards[restoId] = {
         stamps: 0,
         referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
-        referrerInfo: client.cards[restoId]?.referrerInfo || null
+        referrerInfo: client.cards[restoId]?.referrerInfo || null,
+        scannedCodes: []
       };
     }
     
     const clientCard = client.cards[restoId];
+
+    if (!clientCard.scannedCodes) {
+      clientCard.scannedCodes = [];
+    }
+
+    if (clientCard.scannedCodes.includes(qrCodeValue)) {
+      toast({ title: "QR Code déjà utilisé", description: "Vous avez déjà scanné ce code.", variant: "destructive" });
+      router.push('/client/cards');
+      return;
+    }
+
+    clientCard.scannedCodes.push(qrCodeValue);
+    
     let newStamps = clientCard.stamps + 1;
     const stampsRequired = resto.stampsRequiredForReward || 10;
     

@@ -18,6 +18,7 @@ export interface Restaurant {
 export interface ClientCard {
   stamps: number;
   referralCode: string;
+  scannedCodes?: string[]; // Ajout pour suivre les QR codes scannés
   referrerInfo?: { // Information sur qui a parrainé ce client pour CETTE carte
     code: string;
     reward: string;
