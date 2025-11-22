@@ -9,6 +9,7 @@ import { getClient, getRestaurant, saveClient, saveRestaurant, getClients } from
 import { useSession } from '@/hooks/use-session';
 import { textToSpeech } from '../actions';
 import { useState, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function ScanPage() {
   const router = useRouter();
@@ -110,10 +111,15 @@ export default function ScanPage() {
     if (referrerId) {
       const referrer = allClients[referrerId];
       if (referrer.cards[restoId]) {
-        // Here you would implement how to give the reward.
-        // For now, we'll just log it and maybe notify via a toast or a dedicated "rewards" section.
-        console.log(`Parrain ${referrer.name} a gagné une récompense: "${reward}"!`);
-        // You could save this pending reward on the referrer's object in a future version.
+        if (!referrer.pendingReferralRewards) {
+          referrer.pendingReferralRewards = [];
+        }
+        referrer.pendingReferralRewards.push({
+          id: uuidv4(),
+          restoId: restoId,
+          reward: reward,
+        });
+        saveClient(referrer.id, referrer);
       }
     }
   };

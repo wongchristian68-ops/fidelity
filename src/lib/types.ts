@@ -18,6 +18,12 @@ export interface ClientCard {
   referralCode: string;
 }
 
+export interface PendingReferralReward {
+  id: string; // unique id for the reward
+  restoId: string;
+  reward: string;
+}
+
 export interface Client {
   id:string;
   name: string;
@@ -28,6 +34,7 @@ export interface Client {
     code: string;
     reward: string; // La récompense à donner au parrain
   } | null;
+  pendingReferralRewards?: PendingReferralReward[];
 }
 
 export type UserRole = 'resto' | 'client';
