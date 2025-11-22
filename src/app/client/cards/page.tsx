@@ -49,6 +49,16 @@ export default function CardsPage() {
     }
   }, [session]);
   
+  const removeReward = (rewardId: string) => {
+    if (!client) return;
+    const updatedClient = {
+      ...client,
+      pendingReferralRewards: client.pendingReferralRewards?.filter(r => r.id !== rewardId)
+    };
+    saveClient(client.id, updatedClient);
+    setClient(updatedClient);
+  };
+
   useEffect(() => {
     if (client?.pendingReferralRewards && client.pendingReferralRewards.length > 0) {
       const reward = client.pendingReferralRewards[0];
@@ -87,17 +97,7 @@ export default function CardsPage() {
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, restaurants, dismiss]);
-
-  const removeReward = (rewardId: string) => {
-    if (!client) return;
-    const updatedClient = {
-      ...client,
-      pendingReferralRewards: client.pendingReferralRewards?.filter(r => r.id !== rewardId)
-    };
-    saveClient(client.id, updatedClient);
-    setClient(updatedClient);
-  };
+  }, [client, restaurants]);
 
   const handleDeleteAccount = () => {
     if (!client) return;
