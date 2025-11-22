@@ -90,13 +90,6 @@ export default function ScanPage() {
        client.cards[restoId].stamps = newStamps;
        playNotification(`Tampon ajouté chez ${resto.name}.`);
     }
-    
-    // First stamp with a referrer?
-    if (isFirstEverStamp && clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
-       rewardReferrer(clientCard.referrerInfo.referrerId, restoId, clientCard.referrerInfo.reward, client.name);
-       resto.referralsCount = (resto.referralsCount || 0) + 1;
-       client.cards[restoId].referrerInfo!.isActivated = true;
-    }
 
     saveClient(client.id, client);
     
@@ -105,25 +98,6 @@ export default function ScanPage() {
     
     toast({ title: "Succès!", description: `Tampon ajouté chez ${resto.name}!` });
     router.push('/client/cards');
-  };
-
-  const rewardReferrer = (referrerId: string, restoId: string, reward: string, referredClientName: string) => {
-    const referrer = getClient(referrerId);
-
-    if (referrer) {
-      if (referrer.cards[restoId]) {
-        if (!referrer.pendingReferralRewards) {
-          referrer.pendingReferralRewards = [];
-        }
-        referrer.pendingReferralRewards.push({
-          id: uuidv4(),
-          restoId: restoId,
-          reward: reward,
-          referredClientName: referredClientName,
-        });
-        saveClient(referrer.id, referrer);
-      }
-    }
   };
 
   const handleScanError = (errorMessage: string) => {

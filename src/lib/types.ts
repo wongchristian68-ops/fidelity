@@ -20,7 +20,7 @@ export interface ClientCard {
   referrerInfo?: { // Information sur qui a parrainé ce client pour CETTE carte
     code: string;
     reward: string;
-    isActivated: boolean; // Pour savoir si la récompense parrain a été donnée
+    // isActivated est retiré car la récompense est maintenant instantanée
     referrerId: string;
     referrerName: string;
   } | null;

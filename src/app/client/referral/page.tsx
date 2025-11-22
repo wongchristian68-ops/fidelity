@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function ReferralPage() {
   const { session, isLoading } = useSession();
@@ -26,6 +27,23 @@ export default function ReferralPage() {
     }
   }, [session]);
   
+  const rewardReferrer = (referrerId: string, restoId: string, reward: string, referredClientName: string) => {
+    const referrer = getClient(referrerId);
+
+    if (referrer) {
+      if (!referrer.pendingReferralRewards) {
+        referrer.pendingReferralRewards = [];
+      }
+      referrer.pendingReferralRewards.push({
+        id: uuidv4(),
+        restoId: restoId,
+        reward: reward,
+        referredClientName: referredClientName,
+      });
+      saveClient(referrer.id, referrer);
+    }
+  };
+
   const submitReferralCode = () => {
     if (!client || !selectedRestoId || !referralCodeInput) return;
     const code = referralCodeInput.trim().toUpperCase();
@@ -57,14 +75,24 @@ export default function ReferralPage() {
       updatedClient.cards[selectedRestoId].referrerInfo = {
         code,
         reward: restaurant.referralReward,
-        isActivated: false,
         referrerId: referrerId,
         referrerName: referrer.name,
       }
       
       saveClient(client.id, updatedClient);
+      
+      // Reward the referrer immediately
+      rewardReferrer(referrerId, selectedRestoId, restaurant.referralReward, client.name);
+      
+      // Update restaurant stats
+      const resto = getRestaurant(selectedRestoId);
+      if(resto) {
+        resto.referralsCount = (resto.referralsCount || 0) + 1;
+        saveRestaurant(selectedRestoId, resto);
+      }
+
       setClient(updatedClient);
-      toast({ title: "Parrain validé !", description: `Votre bonus de ${referrer.name} pour ${restaurant.name} s'activera lors de votre premier tampon.` });
+      toast({ title: "Parrain validé !", description: `Votre bonus de ${referrer.name} pour ${restaurant.name} est activé.` });
       setSelectedRestoId('');
       setReferralCodeInput('');
     } else {
@@ -146,7 +174,7 @@ export default function ReferralPage() {
           </div>
           {Object.keys(client.cards).map(restoId => {
             const card = client.cards[restoId];
-            if (card.referrerInfo && !card.referrerInfo.isActivated) {
+            if (card.referrerInfo) {
               return (
                 <p key={restoId} className="text-sm text-green-700 bg-green-100 p-3 rounded-lg">
                   Parrainage de {card.referrerInfo.referrerName} activé pour {restaurants[restoId]?.name} ! Vous recevrez votre récompense lors de votre prochain tampon.
