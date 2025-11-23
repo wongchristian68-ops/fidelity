@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useRef, ChangeEvent } from 'react';
+import { useEffect, useState, useRef, ChangeEvent, useCallback } from 'react';
 import { useSession } from '@/hooks/use-session';
 import { getRestaurant, saveRestaurant, deleteRestaurant, getClients, resetRestaurantStats } from '@/lib/db';
 import type { Restaurant } from '@/lib/types';
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QrCodeDisplay } from '@/components/restaurant/qr-code';
+import { QrCodeCountdown } from '@/components/restaurant/qr-code-countdown';
 import { LogOut, Sparkles, Stamp, Users, KeyRound, RefreshCw, AlertTriangle, Upload, Trash2, Gift, Users2, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { aiSuggestReward } from './actions';
@@ -41,14 +42,7 @@ export default function RestaurantPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeClients, setActiveClients] = useState(0);
 
-  useEffect(() => {
-    if (session) {
-      fetchRestaurantData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
-
-  const fetchRestaurantData = () => {
+  const fetchRestaurantData = useCallback(() => {
     if (session) {
       const currentRestaurant = getRestaurant(session.id);
       setRestaurant(currentRestaurant);
@@ -63,29 +57,35 @@ export default function RestaurantPage() {
       const clientsWithCard = allClients.filter(client => client.cards[session.id]);
       setActiveClients(clientsWithCard.length);
     }
-  };
+  }, [session]);
+  
+  useEffect(() => {
+    fetchRestaurantData();
+  }, [fetchRestaurantData]);
 
-  const generateNewQrCode = () => {
-    if (restaurant) {
-      const newValue = uuidv4();
-      const newExpiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours from now
-      const updatedRestaurant = { 
-        ...restaurant, 
-        qrCodeValue: newValue,
-        qrCodeExpiry: newExpiry
-      };
-      saveRestaurant(restaurant.id, updatedRestaurant);
-      setRestaurant(updatedRestaurant);
-      toast({ title: 'Nouveau QR Code généré', description: 'Ce code est valable 24h.' });
+  const generateNewQrCode = useCallback(() => {
+    if (session) {
+        let currentRestaurant = getRestaurant(session.id);
+        if (currentRestaurant) {
+            const newValue = uuidv4();
+            const newExpiry = Date.now() + 24 * 60 * 60 * 1000;
+            const updatedRestaurant = { 
+                ...currentRestaurant, 
+                qrCodeValue: newValue,
+                qrCodeExpiry: newExpiry
+            };
+            saveRestaurant(currentRestaurant.id, updatedRestaurant);
+            setRestaurant(updatedRestaurant);
+            toast({ title: 'Nouveau QR Code généré !', description: 'Ce code est valable 24 heures.' });
+        }
     }
-  };
+  }, [session, toast]);
 
   useEffect(() => {
     if (restaurant && (!restaurant.qrCodeValue || !restaurant.qrCodeExpiry || Date.now() > restaurant.qrCodeExpiry)) {
       generateNewQrCode();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restaurant?.id]);
+  }, [restaurant, generateNewQrCode]);
 
 
   const handleSaveConfig = () => {
@@ -162,8 +162,7 @@ export default function RestaurantPage() {
     return <div className="p-4 text-center">Chargement...</div>;
   }
 
-  const isQrCodeExpired = restaurant.qrCodeExpiry && Date.now() > restaurant.qrCodeExpiry;
-  const qrCodeValue = JSON.stringify({ type: 'stamp', restoId: restaurant.id, value: restaurant.qrCodeValue });
+  const qrCodeValue = restaurant.qrCodeValue ? JSON.stringify({ type: 'stamp', restoId: restaurant.id, value: restaurant.qrCodeValue }) : '';
 
   return (
     <div>
@@ -187,14 +186,12 @@ export default function RestaurantPage() {
           <CardContent>
             <p className="text-sm text-gray-500 mb-6">Faites scanner ce code au client pour valider un passage.</p>
             <div className="bg-white p-4 rounded-xl border-2 border-dashed border-gray-200 inline-block mb-4">
-              {restaurant.qrCodeValue ? <QrCodeDisplay value={qrCodeValue} /> : <p>Génération...</p>}
+              {qrCodeValue ? <QrCodeDisplay value={qrCodeValue} /> : <div className="w-[150px] h-[150px] flex items-center justify-center"><p>Génération...</p></div>}
             </div>
-            {isQrCodeExpired && (
-              <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm mb-4 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5" /> QR Code expiré. Veuillez en générer un nouveau.
-              </div>
+            {restaurant.qrCodeExpiry && (
+              <QrCodeCountdown expiryTimestamp={restaurant.qrCodeExpiry} onExpire={generateNewQrCode} />
             )}
-            <Button onClick={generateNewQrCode}>
+            <Button onClick={generateNewQrCode} className="mt-4">
               <RefreshCw className="w-4 h-4 mr-2" />
               Générer un nouveau QR Code
             </Button>
