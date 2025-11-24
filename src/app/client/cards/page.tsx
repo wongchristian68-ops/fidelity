@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/hooks/use-session";
 import { getClient, getRestaurants, deleteClient, saveClient } from "@/lib/db";
 import type { Client, Restaurant } from "@/lib/types";
-import { LoyaltyCard } from "@/components/client/loyalty-card";
 import { RewardModal } from "@/components/modals/reward-modal";
 import { LogOut, Wallet, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { CardCarousel } from "@/components/client/card-carousel";
 
 export default function CardsPage() {
   const { session, isLoading, logout } = useSession();
@@ -132,7 +132,7 @@ export default function CardsPage() {
         </div>
       </header>
       
-      <main className="p-4 space-y-4">
+      <main className="p-4">
         {cardIds.length === 0 ? (
           <div className="text-center py-20">
             <Wallet className="mx-auto text-gray-300 w-12 h-12 mb-4" />
@@ -142,12 +142,7 @@ export default function CardsPage() {
             </Button>
           </div>
         ) : (
-          cardIds.map(restoId => {
-            const resto = restaurants[restoId];
-            const clientCard = client.cards[restoId];
-            if (!resto || !clientCard) return null;
-            return <LoyaltyCard key={restoId} restaurant={resto} clientCard={clientCard} />;
-          })
+          <CardCarousel cards={client.cards} restaurants={restaurants} />
         )}
       </main>
 
