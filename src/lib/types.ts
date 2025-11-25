@@ -58,3 +58,13 @@ export interface StampQrCode {
   restoId: string;
   value: string;
 }
+
+export interface Review {
+  id: string;
+  author: string;
+  rating: number; // 1 to 5
+  text: string;
+  language: string;
+  timestamp: number;
+  aiResponse?: string;
+}

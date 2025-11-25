@@ -1,4 +1,4 @@
-import type { Restaurant, Client } from './types';
+import type { Restaurant, Client, Review } from './types';
 
 const isClient = typeof window !== 'undefined';
 
@@ -74,4 +74,29 @@ export function deleteClient(id: string): void {
   const clients = getClients();
   delete clients[id];
   set('clients', clients);
+}
+
+// --- Reviews (Simulated) ---
+const FAKE_REVIEWS: { [restoId: string]: Review[] } = {
+  'resto_le_délicieux': [
+    { id: 'rev1', author: 'John D.', rating: 5, text: "Absolutely fantastic! The food was delicious and the service was top-notch. Will definitely come back.", language: 'English', timestamp: Date.now() - 1000 * 3600 * 2, aiResponse: '' },
+    { id: 'rev2', author: 'Marie L.', rating: 4, text: "Très bonne expérience, les plats sont savoureux et le cadre est agréable. Juste un peu d'attente.", language: 'French', timestamp: Date.now() - 1000 * 3600 * 8, aiResponse: '' },
+    { id: 'rev3', author: 'Lí Wěi', rating: 5, text: "非常棒的餐厅！食物很美味，环境也很好。我一定会推荐给我的朋友。", language: 'Mandarin Chinese', timestamp: Date.now() - 1000 * 3600 * 24 * 2, aiResponse: '' },
+  ],
+  // Add more fake reviews for other restaurants if needed for testing
+};
+
+export function getRecentReviews(restoId: string): Review[] {
+  return FAKE_REVIEWS[restoId] || [];
+}
+
+export function saveReviewResponse(restoId: string, reviewId: string, response: string): void {
+  // This is a mock save. In a real app, this would update a database.
+  if (FAKE_REVIEWS[restoId]) {
+    const reviewIndex = FAKE_REVIEWS[restoId].findIndex(r => r.id === reviewId);
+    if (reviewIndex !== -1) {
+      FAKE_REVIEWS[restoId][reviewIndex].aiResponse = response;
+      console.log(`Saved response for review ${reviewId}`);
+    }
+  }
 }

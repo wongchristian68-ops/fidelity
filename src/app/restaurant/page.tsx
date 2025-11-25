@@ -27,6 +27,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
+import { ReviewManager } from '@/components/restaurant/review-manager';
 
 export default function RestaurantPage() {
   const { session, isLoading, logout } = useSession();
@@ -197,6 +198,8 @@ export default function RestaurantPage() {
             </Button>
           </CardContent>
         </Card>
+        
+        <ReviewManager restaurant={restaurant} />
 
         <Card>
           <CardHeader>
