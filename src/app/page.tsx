@@ -1,6 +1,8 @@
+
 "use client";
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +12,7 @@ import { UtensilsIcon } from '@/components/icons/utensils-icon';
 import { getClient, getRestaurant, saveRestaurant, getClients, saveClient } from '@/lib/db';
 import type { Client, Restaurant } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { placeholderImages } from '@/lib/placeholder-images.json';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -18,6 +21,8 @@ export default function AuthPage() {
   const [restoPin, setRestoPin] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const bgImage = placeholderImages[0];
+
 
   const handleRestoLogin = () => {
     const name = restoName.trim();
@@ -102,77 +107,87 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="p-6 min-h-screen flex flex-col justify-center bg-gray-50">
-      <div className="text-center mb-12">
-        <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-          <UtensilsIcon className="w-10 h-10 text-orange-600" />
-        </div>
-        <h1 className="text-4xl font-bold text-gray-900 font-headline">Fidélité & Partage</h1>
-        <p className="text-gray-500 mt-2">Fidélité & Parrainage Simplifiés</p>
-      </div>
-
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline text-lg">Espace Restaurateur</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input 
-              id="auth-resto-name" 
-              placeholder="Nom de votre restaurant" 
-              value={restoName}
-              onChange={(e) => setRestoName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
-            />
-            <Input 
-              id="auth-resto-pin" 
-              type="password"
-              placeholder="Code PIN à 4 chiffres" 
-              value={restoPin}
-              maxLength={4}
-              onChange={(e) => setRestoPin(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
-            />
-            <Button onClick={handleRestoLogin} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end hover:opacity-90 transition-opacity">
-              Gérer mon Restaurant
-            </Button>
-            <p className="text-xs text-gray-500 text-center pt-2">
-              Créez un compte ou connectez-vous.
-            </p>
-          </CardContent>
-        </Card>
-
-        <div className="relative flex py-2 items-center">
-          <div className="flex-grow border-t border-gray-300"></div>
-          <span className="flex-shrink-0 mx-4 text-gray-400 text-sm">OU</span>
-          <div className="flex-grow border-t border-gray-300"></div>
+    <div className="relative min-h-screen flex flex-col justify-center bg-gray-900 p-6">
+      <Image 
+        src={bgImage.imageUrl} 
+        alt={bgImage.description} 
+        fill
+        className="object-cover"
+        data-ai-hint={bgImage.imageHint}
+      />
+      <div className="absolute inset-0 bg-black/60"></div>
+      <div className="relative z-10">
+        <div className="text-center mb-12">
+          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+            <UtensilsIcon className="w-10 h-10 text-orange-600" />
+          </div>
+          <h1 className="text-4xl font-bold text-white font-headline">Fidélité & Partage</h1>
+          <p className="text-gray-300 mt-2">Fidélité & Parrainage Simplifiés</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline text-lg">Espace Client</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input 
-              id="auth-client-name" 
-              placeholder="Votre prénom"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleClientLogin()}
-            />
-             <Input 
-              id="auth-client-phone" 
-              type="tel"
-              placeholder="Numéro de téléphone"
-              value={clientPhone}
-              onChange={(e) => setClientPhone(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleClientLogin()}
-            />
-            <Button onClick={handleClientLogin} variant="secondary" className="w-full font-semibold bg-gray-800 text-white hover:bg-gray-700">
-              Accéder à mes cartes
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Card className="bg-white/95 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="font-headline text-lg">Espace Restaurateur</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input 
+                id="auth-resto-name" 
+                placeholder="Nom de votre restaurant" 
+                value={restoName}
+                onChange={(e) => setRestoName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
+              />
+              <Input 
+                id="auth-resto-pin" 
+                type="password"
+                placeholder="Code PIN à 4 chiffres" 
+                value={restoPin}
+                maxLength={4}
+                onChange={(e) => setRestoPin(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
+              />
+              <Button onClick={handleRestoLogin} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end hover:opacity-90 transition-opacity">
+                Gérer mon Restaurant
+              </Button>
+              <p className="text-xs text-gray-500 text-center pt-2">
+                Créez un compte ou connectez-vous.
+              </p>
+            </CardContent>
+          </Card>
+
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-gray-500"></div>
+            <span className="flex-shrink-0 mx-4 text-gray-400 text-sm">OU</span>
+            <div className="flex-grow border-t border-gray-500"></div>
+          </div>
+
+          <Card className="bg-white/95 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="font-headline text-lg">Espace Client</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input 
+                id="auth-client-name" 
+                placeholder="Votre prénom"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleClientLogin()}
+              />
+              <Input 
+                id="auth-client-phone" 
+                type="tel"
+                placeholder="Numéro de téléphone"
+                value={clientPhone}
+                onChange={(e) => setClientPhone(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleClientLogin()}
+              />
+              <Button onClick={handleClientLogin} variant="secondary" className="w-full font-semibold bg-gray-800 text-white hover:bg-gray-700">
+                Accéder à mes cartes
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
