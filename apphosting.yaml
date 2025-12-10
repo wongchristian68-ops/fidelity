@@ -1,37 +1,10 @@
-# Settings to manage and configure a Firebase App Hosting backend.
-# https://firebase.google.com/docs/app-hosting/configure
-
-# The name of the App Hosting backend, as defined in firebase.json
-# Required for all App Hosting backends
 version: 1
-
-# Specifies the version of the App Hosting features
-# Required for all App Hosting backends
 runConfig:
-  # The number of CPUs allocated to each instance of your App Hosting backend
-  # Optional, defaults to 0.5
   cpu: 0.5
-
-  # The amount of memory allocated to each instance of your App Hosting backend
-  # Optional, defaults to 512MiB
   memoryMiB: 512
-
-  # The maximum number of instances that your App Hosting backend can scale up to
-  # Optional, defaults to 1
   maxInstances: 10
-
-  # The minimum number of instances that your App Hosting backend will have on standby
-  # Optional, defaults to 0
   minInstances: 0
-
-  # The maximum number of concurrent requests that can be handled by a single instance
-  # Optional, defaults to 80
   concurrency: 80
-
-  # The environment variables that will be available to your App Hosting backend
-  # Optional
-  env:
-    - variable: GEMINI_API_KEY
-      # This is a reference to a secret that you can create with the Firebase CLI:
-      # firebase apphosting:secrets:set GEMINI_API_KEY
-      secret: GEMINI_API_KEY
+env:
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
