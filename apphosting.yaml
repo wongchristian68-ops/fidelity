@@ -1,9 +1,3 @@
-runConfig:
-  cpu: 0.5
-  memoryMiB: 512
-  maxInstances: 10
-  minInstances: 0
-  concurrency: 80
 env:
   - variable: GEMINI_API_KEY
     secret: GEMINI_API_KEY
