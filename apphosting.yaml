@@ -1,4 +1,3 @@
-version: 1
 runConfig:
   cpu: 0.5
   memoryMiB: 512
