@@ -1,0 +1,102 @@
+/**
+ * @title Firebase Security Rules for StampJoy (Prototyping)
+ * @description This ruleset secures the Firestore database for the StampJoy application.
+ *
+ * @philosophy
+ * Core Philosophy: This ruleset enforces a strict user-ownership model for two distinct entity types: Restaurants and Clients. It assumes that both restaurants and clients can authenticate, and their authentication UID corresponds directly to the document ID in their respective collections (`/restaurants/{restaurantId}` or `/clients/{clientId}`). Access is completely segregated; a user can only interact with the single document that matches their UID.
+ *
+ * @structure
+ * Data Structure: The database has a flat structure with two primary top-level collections:
+ * 1. `/restaurants/{restaurantId}`: Stores profile and loyalty program data for each restaurant.
+ * 2. `/clients/{clientId}`: Stores profile and loyalty card information for each client.
+ * There are no subcollections defined in this iteration.
+ *
+ * @decisions
+ * Key Security Decisions:
+ * - Strict Ownership: All documents are owned by a user (either a restaurant or a client). Only the owner can read, create, update, or delete their own document.
+ * - No Cross-Access: There are no rules allowing a restaurant to view a client's data or vice-versa. Future collaboration features would require explicit denormalization of permissions.
+ * - User Enumeration Disabled: Top-level `list` operations on both `/restaurants` and `/clients` are disabled to prevent malicious actors from scraping a list of all users. Users can only `get` their own specific document.
+ * - Path and Data Consistency: Rules enforce that the `id` field within a document must match the document's ID in the path upon creation, and that this field is immutable upon update. This ensures relational integrity.
+ *
+ * @denormalization
+ * Denormalization for Authorization: To enable simple and performant ownership checks, each document in `/restaurants` and `/clients` is required to have an `id` field that mirrors the document's path ID (and the owner's UID). This allows for direct checks like `isOwner(restaurantId)` without needing any `get()` or `exists()` calls to other documents.
+ *
+ * @segregation
+ * Structural Segregation: The data is naturally segregated by user type into the `/restaurants` and `/clients` collections. This clean separation simplifies the security model, as rules for one type of user do not affect the other.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the primary function for establishing document ownership.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * A robust ownership check for update and delete operations.
+     * It verifies that the document exists (`resource != null`) AND that the
+     * authenticated user is the owner. This prevents mutatating non-existent data.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+
+    // ------------------------------------------------------------------------
+    // Collection Rules
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Manages restaurant profiles. A restaurant user can only access the single document that matches their unique ID.
+     * @path /restaurants/{restaurantId}
+     * @allow (get) An authenticated restaurant with UID 'burger-palace' can read `/restaurants/burger-palace`.
+     * @deny (list) No user can list all documents in the `/restaurants` collection, preventing user enumeration.
+     * @deny (update) An authenticated restaurant with UID 'pizza-joint' cannot update `/restaurants/burger-palace`.
+     * @principle Enforces strict document ownership where the document ID must match the user's auth UID.
+     */
+    match /restaurants/{restaurantId} {
+      // READ: Allow a user to get their own document. Deny listing to prevent enumeration.
+      allow get: if isOwner(restaurantId);
+      allow list: if false;
+
+      // WRITE: Allow a user to create, update, and delete their own document.
+      allow create: if isOwner(restaurantId) && request.resource.data.id == restaurantId;
+      allow update: if isExistingOwner(restaurantId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(restaurantId);
+    }
+
+    /**
+     * @description Manages client profiles. A client user can only access the single document that matches their unique ID.
+     * @path /clients/{clientId}
+     * @allow (create) An authenticated user with UID 'user-abc-123' can create their profile at `/clients/user-abc-123`.
+     * @deny (get) An authenticated user with UID 'user-xyz-789' cannot read the document at `/clients/user-abc-123`.
+     * @deny (list) No user can list all documents in the `/clients` collection, preventing user enumeration.
+     * @principle Enforces strict document ownership where the document ID must match the user's auth UID.
+     */
+    match /clients/{clientId} {
+      // READ: Allow a user to get their own document. Deny listing to prevent enumeration.
+      allow get: if isOwner(clientId);
+      allow list: if false;
+
+      // WRITE: Allow a user to create, update, and delete their own document.
+      allow create: if isOwner(clientId) && request.resource.data.id == clientId;
+      allow update: if isExistingOwner(clientId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(clientId);
+    }
+  }
+}
