@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Toaster } from "@/components/ui/toaster"
 import { cn } from "@/lib/utils";
 import './globals.css';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'Fidélité & Partage',
@@ -26,10 +27,12 @@ export default function RootLayout({
         <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" type="text/javascript"></script>
       </head>
       <body className={cn("font-body antialiased min-h-screen bg-background")}>
-        <main className="max-w-md mx-auto bg-background min-h-screen">
-          {children}
-        </main>
-        <Toaster />
+        <FirebaseClientProvider>
+          <main className="max-w-md mx-auto bg-background min-h-screen">
+            {children}
+          </main>
+          <Toaster />
+        </FirebaseClientProvider>
       </body>
     </html>
   );
