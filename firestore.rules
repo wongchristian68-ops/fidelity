@@ -78,8 +78,8 @@ service cloud.firestore {
      * @principle Enforces strict document ownership where the document ID must match the user's auth UID.
      */
     match /restaurants/{restaurantId} {
-      // READ: Allow a user to get their own document. Deny listing to prevent enumeration.
-      allow get: if isOwner(restaurantId);
+      // READ: Allow any authenticated user to get a restaurant's public profile.
+      allow get: if isSignedIn();
       allow list: if isSignedIn();
 
       // WRITE: Allow a user to create, update, and delete their own document.
