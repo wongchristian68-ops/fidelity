@@ -58,19 +58,12 @@ export function useSession() {
             role: role,
           });
         } else {
-            // This can happen if the profile document hasn't been created yet.
-            // For anonymous users, we create one on the fly on the login page.
-            // We'll wait for the login flow to create the user profile.
-            // if we are here it might be during login flow, so we wait.
-            // if we already have a user but no profile, something is wrong.
-             if (user.isAnonymous && !profile) {
-                // This might happen if the user authenticated but the page reloaded
-                // before the profile was created on the login page. We can try to fetch it again shortly.
-                // For now, we assume it's being created.
-                setSession(null);
-             } else {
-                 setSession(null);
-             }
+            // This can happen if the profile document hasn't been created yet
+            // during the login flow. We don't nullify the session here to avoid a race condition.
+            // The AuthRedirect component will show a loader, and by the time the
+            // user lands on the target page, the profile should be available.
+            // If it's still not available on the protected page, that page's logic will handle it.
+            setSession(null);
         }
       } catch (e: any) {
         console.error("Error fetching user profile:", e);
