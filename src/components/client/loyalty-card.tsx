@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { StampGrid } from './stamp-grid';
 import type { Restaurant, ClientCard } from '@/lib/types';
@@ -6,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
+import { useRef } from 'react';
 
 interface LoyaltyCardProps {
   restaurant: Restaurant;
@@ -14,14 +16,32 @@ interface LoyaltyCardProps {
 
 export function LoyaltyCard({ restaurant, clientCard }: LoyaltyCardProps) {
   const { toast } = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(clientCard.referralCode).then(() => {
-      toast({ title: 'Code copié !' });
-    }).catch(err => {
-      console.error('Copy failed', err);
-      toast({ title: 'Erreur de copie', description: 'Impossible de copier le code sur cet appareil.', variant: 'destructive' });
-    });
+    if (inputRef.current) {
+      inputRef.current.select();
+      inputRef.current.setSelectionRange(0, 99999); // For mobile devices
+
+      try {
+        // Use the older, more reliable command-based copy
+        document.execCommand('copy');
+        toast({ title: 'Code copié !' });
+      } catch (err) {
+        console.error('Copy failed', err);
+        // Fallback for browsers that might not support execCommand
+        navigator.clipboard.writeText(clientCard.referralCode).then(() => {
+          toast({ title: 'Code copié !' });
+        }).catch(err => {
+          toast({ title: 'Erreur de copie', description: 'Impossible de copier le code.', variant: 'destructive' });
+        });
+      }
+
+      // Deselect text after copying
+      if (window.getSelection) {
+        window.getSelection()?.removeAllRanges();
+      }
+    }
   };
 
   const cardStyle = restaurant.cardImageUrl ? {
@@ -57,6 +77,7 @@ export function LoyaltyCard({ restaurant, clientCard }: LoyaltyCardProps) {
           </p>
           <div className="flex w-full items-center gap-2">
             <Input
+              ref={inputRef}
               readOnly
               value={clientCard.referralCode}
               className={cn(
