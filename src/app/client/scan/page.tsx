@@ -35,22 +35,6 @@ export default function ScanPage() {
     }
   }
 
-  const rewardReferrer = async (referrerId: string, restoId: string, reward: string, referredClientName: string) => {
-    const referrer = await getClient(referrerId);
-    if (referrer) {
-      if (!referrer.pendingReferralRewards) {
-        referrer.pendingReferralRewards = [];
-      }
-      referrer.pendingReferralRewards.push({
-        id: uuidv4(),
-        restoId: restoId,
-        reward: reward,
-        referredClientName: referredClientName,
-      });
-      await saveClient(referrer.id, referrer);
-    }
-  };
-
   const handleScanSuccess = async (decodedText: string) => {
     if (isProcessing || !session || session.role !== 'client') return;
     setIsProcessing(true);
@@ -118,7 +102,12 @@ export default function ScanPage() {
     
     // Check for referral reward on first stamp for this card
     if (clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
-        await rewardReferrer(clientCard.referrerInfo.referrerId, restoId, clientCard.referrerInfo.reward, client.name);
+        // Instead of rewarding the referrer directly (which causes permission issues),
+        // we will now just increment the restaurant's referral count.
+        const updatedResto = { ...resto };
+        updatedResto.referralsCount = (updatedResto.referralsCount || 0) + 1;
+        await saveRestaurant(restoId, updatedResto);
+        
         clientCard.referrerInfo.isActivated = true;
         
         toast({
@@ -127,7 +116,7 @@ export default function ScanPage() {
             duration: 10000,
         });
 
-        // The referral is now consumed, so we can remove the info.
+        // The referral is now consumed from the client's perspective
         delete client.cards[restoId].referrerInfo;
     }
 

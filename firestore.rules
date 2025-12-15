@@ -84,7 +84,9 @@ service cloud.firestore {
 
       // WRITE: Allow a user to create, update, and delete their own document.
       allow create: if isOwner(restaurantId) && request.resource.data.id == restaurantId;
-      allow update: if isExistingOwner(restaurantId) && request.resource.data.id == resource.data.id;
+      // Allow client to update specific fields for stamps and referrals.
+      allow update: if (isExistingOwner(restaurantId) && request.resource.data.id == resource.data.id) ||
+                       (isSignedIn() && request.resource.data.keys().hasOnly(['stampsGiven', 'rewardsGiven', 'referralsCount']));
       allow delete: if isExistingOwner(restaurantId);
     }
 
