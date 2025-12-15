@@ -3,8 +3,8 @@
 
 import { useEffect, useState, useRef, ChangeEvent, useCallback } from 'react';
 import { useSession } from '@/hooks/use-session';
-import { getRestaurant, saveRestaurant, deleteRestaurant, getClients, resetRestaurantStats } from '@/lib/db';
-import type { Restaurant } from '@/lib/types';
+import { getRestaurant, updateRestaurant, deleteRestaurant, getClients, resetRestaurantStats } from '@/lib/db';
+import type { Restaurant, RestaurantUpdate } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
 import { ReviewManager } from '@/components/restaurant/review-manager';
+import { saveRestaurant } from '@/lib/db';
 
 export default function RestaurantPage() {
   const { session, isLoading: isSessionLoading, logout } = useSession();
@@ -73,13 +74,12 @@ export default function RestaurantPage() {
         if (currentRestaurant) {
             const newValue = uuidv4();
             const newExpiry = Date.now() + 24 * 60 * 60 * 1000;
-            const updatedRestaurant = { 
-                ...currentRestaurant, 
+            const updatedRestaurant: RestaurantUpdate = { 
                 qrCodeValue: newValue,
                 qrCodeExpiry: newExpiry
             };
-            await saveRestaurant(currentRestaurant.id, updatedRestaurant);
-            setRestaurant(updatedRestaurant);
+            await updateRestaurant(currentRestaurant.id, updatedRestaurant);
+            setRestaurant(prev => prev ? {...prev, ...updatedRestaurant} : null);
             toast({ title: 'Nouveau QR Code généré !', description: 'Ce code est valable 24 heures.' });
         }
     }
@@ -94,8 +94,7 @@ export default function RestaurantPage() {
 
   const handleSaveConfig = async () => {
     if (restaurant) {
-      const updatedRestaurant = { 
-        ...restaurant, 
+      const updatedData: RestaurantUpdate = { 
         name: nameInput,
         loyaltyReward: loyaltyRewardInput,
         stampsRequiredForReward: stampsRequiredInput,
@@ -103,8 +102,8 @@ export default function RestaurantPage() {
         googleLink: googleLinkInput,
         cardImageUrl: cardImageUrlInput || '',
       };
-      await saveRestaurant(restaurant.id, updatedRestaurant);
-      setRestaurant(updatedRestaurant);
+      await updateRestaurant(restaurant.id, updatedData);
+      setRestaurant(prev => prev ? {...prev, ...updatedData} : null);
       toast({ title: "Configuration sauvegardée !" });
     }
   };

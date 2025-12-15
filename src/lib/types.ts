@@ -14,6 +14,9 @@ export interface Restaurant {
   cardImageUrl?: string;
 }
 
+export type RestaurantUpdate = Partial<Omit<Restaurant, 'id' | 'email'>>;
+
+
 export interface ClientCard {
   stamps: number;
   referralCode: string;

@@ -14,7 +14,7 @@ import {
   updateDoc,
   deleteField,
 } from 'firebase/firestore';
-import type { Restaurant, Client, Review } from './types';
+import type { Restaurant, Client, Review, RestaurantUpdate } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -77,6 +77,21 @@ export async function saveRestaurant(id: string, data: Restaurant): Promise<void
     throw permissionError;
   });
 }
+
+export async function updateRestaurant(id: string, data: RestaurantUpdate): Promise<void> {
+  const db = getDb();
+  const docRef = doc(db, 'restaurants', id);
+  await updateDoc(docRef, data).catch((error) => {
+    const permissionError = new FirestorePermissionError({
+      path: docRef.path,
+      operation: 'update',
+      requestResourceData: data,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw permissionError;
+  });
+}
+
 
 export async function deleteRestaurant(id: string): Promise<void> {
   const db = getDb();
