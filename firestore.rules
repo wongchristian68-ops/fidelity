@@ -100,7 +100,8 @@ service cloud.firestore {
       // READ: Allow a user to get their own document.
       allow get: if isOwner(clientId);
       // LIST: Allow targeted queries for referral codes, but not a full collection scan.
-      allow list: if isSignedIn() && request.query.keys().hasOnly(['limit', 'offset', 'where']) && request.query.where[0][0].split('.')[0] == 'cards';
+      allow list: if isSignedIn() && request.query.keys().hasAny(['where', 'limit', 'offset']);
+
 
       // WRITE: Allow a user to create, update, and delete their own document.
       allow create: if isOwner(clientId) && request.resource.data.id == clientId;
