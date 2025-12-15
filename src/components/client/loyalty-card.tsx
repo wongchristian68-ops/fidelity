@@ -15,14 +15,13 @@ interface LoyaltyCardProps {
 export function LoyaltyCard({ restaurant, clientCard }: LoyaltyCardProps) {
   const { toast } = useToast();
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(clientCard.referralCode);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(clientCard.referralCode).then(() => {
       toast({ title: 'Code copié !' });
-    } catch (err) {
+    }).catch(err => {
       console.error('Copy failed', err);
       toast({ title: 'Erreur de copie', description: 'Impossible de copier le code sur cet appareil.', variant: 'destructive' });
-    }
+    });
   };
 
   const cardStyle = restaurant.cardImageUrl ? {
