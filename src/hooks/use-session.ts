@@ -41,14 +41,19 @@ export function useSession() {
         let profile: Client | Restaurant | null = null;
         let role: 'client' | 'resto' | null = null;
 
-        // Check if it's a restaurant user (they log in with email)
+        // Check if it's a restaurant user or a client user (they both log in with email now)
         if (user.email) {
-          profile = await getRestaurant(user.uid);
-          role = 'resto';
-        } else if (user.isAnonymous) {
-          // Check if it's a client (anonymous auth)
-          profile = await getClient(user.uid);
-          role = 'client';
+            // It could be either. We check for a restaurant profile first.
+            profile = await getRestaurant(user.uid);
+            if (profile) {
+                role = 'resto';
+            } else {
+                // If not a restaurant, check for a client profile.
+                profile = await getClient(user.uid);
+                if (profile) {
+                    role = 'client';
+                }
+            }
         }
 
         if (profile && role) {
@@ -89,3 +94,5 @@ export function useSession() {
 
   return { session, isLoading, logout, error };
 }
+
+    

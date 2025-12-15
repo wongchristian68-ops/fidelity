@@ -1,3 +1,4 @@
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -40,7 +41,8 @@ export interface PendingReferralReward {
 export interface Client {
   id:string;
   name: string;
-  phone: string;
+  email: string;
+  phone?: string;
   cards: { [restoId: string]: ClientCard };
   // L'ancien `referrer` est maintenant dans ClientCard.
   pendingReferralRewards?: PendingReferralReward[];
@@ -70,3 +72,5 @@ export interface Review {
   timestamp: number;
   aiResponse?: string;
 }
+
+    

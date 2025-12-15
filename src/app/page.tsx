@@ -11,12 +11,11 @@ import { UtensilsIcon } from '@/components/icons/utensils-icon';
 import { saveRestaurant, saveClient, getClient } from '@/lib/db';
 import type { Client, Restaurant } from '@/lib/types';
 import { placeholderImages } from '@/lib/placeholder-images.json';
-import { useAuth, initiateAnonymousSignIn } from '@/firebase';
+import { useAuth } from '@/firebase';
 import { 
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInAnonymously
 } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
@@ -26,8 +25,8 @@ export default function AuthPage() {
   const router = useRouter();
   const [restoEmail, setRestoEmail] = useState('');
   const [restoPassword, setRestoPassword] = useState('');
-  const [clientName, setClientName] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientPassword, setClientPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const bgImage = placeholderImages[0];
 
@@ -96,11 +95,10 @@ export default function AuthPage() {
     }
   };
 
-
-  const handlePasswordReset = () => {
-    const email = restoEmail.trim().toLowerCase();
+  const handlePasswordReset = (emailForReset: string) => {
+    const email = emailForReset.trim().toLowerCase();
     if (!email) {
-      toast({ title: "Adresse e-mail requise", description: "Veuillez entrer votre adresse e-mail pour réinitialiser le mot de passe.", variant: "destructive" });
+      toast({ title: "Adresse e-mail requise", description: "Veuillez entrer une adresse e-mail pour réinitialiser le mot de passe.", variant: "destructive" });
       return;
     }
 
@@ -118,48 +116,61 @@ export default function AuthPage() {
       })
       .finally(() => setIsLoading(false));
   };
-
-  const handleClientLogin = async () => {
-    const name = clientName.trim();
-    const phone = clientPhone.trim();
-
-    if (!name || !phone) {
+  
+  const handleClientSignUp = async () => {
+    const email = clientEmail.trim().toLowerCase();
+    const password = clientPassword.trim();
+    if (!email || !password) {
       toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
       return;
     }
-    
+    if (password.length < 6) {
+        toast({ title: 'Mot de passe trop court', description: 'Le mot de passe doit faire au moins 6 caractères.', variant: 'destructive' });
+        return;
+    }
     setIsLoading(true);
     try {
-        const userCredential = await signInAnonymously(auth);
-        const user = userCredential.user;
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      const clientNameFromEmail = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-        if (!user) throw new Error("Authentication failed.");
-
-        let client = await getClient(user.uid);
-
-        if (client) {
-            if (client.name !== name || client.phone !== phone) {
-                client.name = name;
-                client.phone = phone;
-                await saveClient(user.uid, client);
-            }
-        } else {
-            const newClient: Client = {
-                id: user.uid,
-                name,
-                phone,
-                cards: {},
-            };
-            await saveClient(user.uid, newClient);
-        }
-        // At this point, user is logged in and profile is saved.
-        // AuthRedirect will handle redirection.
-    } catch (error) {
-        console.error("Client login or profile creation failed", error);
-        toast({ title: 'Erreur de connexion', description: "Impossible de se connecter ou de créer le profil. Veuillez réessayer.", variant: 'destructive' });
-        auth.signOut();
+      const newClient: Client = {
+          id: user.uid,
+          name: clientNameFromEmail,
+          email: email,
+          cards: {},
+      };
+      await saveClient(user.uid, newClient);
+    } catch (error: any) {
+      let description = "Une erreur est survenue lors de l'inscription.";
+      if (error.code === 'auth/email-already-in-use') {
+        description = "Cette adresse e-mail est déjà utilisée. Essayez de vous connecter.";
+      }
+      toast({ title: 'Erreur d\'inscription', description, variant: 'destructive' });
     } finally {
-         setIsLoading(false);
+      setIsLoading(false);
+    }
+  };
+  
+  const handleClientSignIn = async () => {
+    const email = clientEmail.trim().toLowerCase();
+    const password = clientPassword.trim();
+    if (!email || !password) {
+      toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+      let description = "Une erreur est survenue lors de la connexion.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        description = "L'adresse e-mail ou le mot de passe est incorrect.";
+      }
+      toast({ title: 'Erreur de connexion', description, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -213,7 +224,7 @@ export default function AuthPage() {
                 </Button>
               </div>
               <div className="text-center">
-                <Button variant="link" className="text-xs text-gray-500 h-auto p-0" onClick={handlePasswordReset} disabled={isLoading}>
+                <Button variant="link" className="text-xs text-gray-500 h-auto p-0" onClick={() => handlePasswordReset(restoEmail)} disabled={isLoading}>
                   Mot de passe oublié ?
                 </Button>
               </div>
@@ -231,26 +242,35 @@ export default function AuthPage() {
               <CardTitle className="font-headline text-lg">Espace Client</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Input 
-                id="auth-client-name" 
-                placeholder="Votre prénom"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleClientLogin()}
+               <Input 
+                id="auth-client-email" 
+                type="email"
+                placeholder="Adresse e-mail" 
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
                 disabled={isLoading}
               />
               <Input 
-                id="auth-client-phone" 
-                type="tel"
-                placeholder="Numéro de téléphone"
-                value={clientPhone}
-                onChange={(e) => setClientPhone(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleClientLogin()}
+                id="auth-client-password" 
+                type="password"
+                placeholder="Mot de passe" 
+                value={clientPassword}
+                onChange={(e) => setClientPassword(e.target.value)}
                 disabled={isLoading}
               />
-              <Button onClick={handleClientLogin} variant="secondary" className="w-full font-semibold bg-gray-800 text-white hover:bg-gray-700" disabled={isLoading}>
-                {isLoading ? "Chargement..." : "Accéder à mes cartes"}
-              </Button>
+               <div className="grid grid-cols-2 gap-2">
+                <Button onClick={handleClientSignIn} className="w-full font-semibold bg-gray-800 text-white hover:bg-gray-700" disabled={isLoading}>
+                  {isLoading ? "Chargement..." : "Se connecter"}
+                </Button>
+                 <Button onClick={handleClientSignUp} variant="secondary" className="w-full font-semibold bg-gray-200 text-gray-800 hover:bg-gray-300" disabled={isLoading}>
+                  {isLoading ? "Chargement..." : "S'inscrire"}
+                </Button>
+              </div>
+              <div className="text-center">
+                <Button variant="link" className="text-xs text-gray-500 h-auto p-0" onClick={() => handlePasswordReset(clientEmail)} disabled={isLoading}>
+                  Mot de passe oublié ?
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -258,3 +278,5 @@ export default function AuthPage() {
     </div>
   );
 }
+
+    
