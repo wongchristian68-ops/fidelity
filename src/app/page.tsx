@@ -197,7 +197,7 @@ export default function AuthPage() {
                 disabled={isLoading}
               />
               <Button onClick={handleRestoLogin} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end hover:opacity-90 transition-opacity" disabled={isLoading}>
-                {isLoading ? "Chargement..." : "Gérer mon Restaurant"}
+                {isLoading ? "Chargement..." : "Se connecter / S'inscrire"}
               </Button>
               <div className="text-center">
                 <Button variant="link" className="text-xs text-gray-500 h-auto p-0" onClick={handlePasswordReset} disabled={isLoading}>
@@ -205,7 +205,7 @@ export default function AuthPage() {
                 </Button>
               </div>
               <p className="text-xs text-gray-500 text-center pt-2">
-                Créez un compte ou connectez-vous.
+                Entrez vos identifiants pour vous connecter ou créer un nouveau compte.
               </p>
             </CardContent>
           </Card>
