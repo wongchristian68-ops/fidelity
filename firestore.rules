@@ -16,7 +16,7 @@
  * Key Security Decisions:
  * - Strict Ownership: All documents are owned by a user (either a restaurant or a client). Only the owner can read, create, update, or delete their own document.
  * - No Cross-Access: There are no rules allowing a restaurant to view a client's data or vice-versa. Future collaboration features would require explicit denormalization of permissions.
- * - User Enumeration Disabled: Top-level `list` operations on both `/restaurants` and `/clients` are disabled to prevent malicious actors from scraping a list of all users. Users can only `get` their own specific document.
+ * - User Enumeration Disabled: Top-level `list` operations on `/restaurants` collection are disabled to prevent scraping. The `/clients` collection allows `list` only for authenticated restaurants to get aggregate counts, but `get` is restricted to the client owner.
  *
  * @denormalization
  * Denormalization for Authorization: To enable simple and performant ownership checks, each document in `/restaurants` and `/clients` is required to have an `id` field that mirrors the document's path ID (and the owner's UID). This allows for direct checks like `isOwner(restaurantId)` without needing any `get()` or `exists()` calls to other documents.
@@ -74,7 +74,7 @@ service cloud.firestore {
      * @path /restaurants/{restaurantId}
      * @allow (get) An authenticated restaurant with UID 'burger-palace' can read `/restaurants/burger-palace`.
      * @deny (list) No user can list all documents in the `/restaurants` collection, preventing user enumeration.
-     * @deny (update) An authenticated restaurant with UID 'pizza-joint' cannot update `/restaurants/burger-palace`.
+     * @allow (update) An authenticated restaurant owner can update their own document, provided the 'id' field is not changed.
      * @principle Enforces strict document ownership where the document ID must match the user's auth UID.
      */
     match /restaurants/{restaurantId} {
@@ -84,7 +84,7 @@ service cloud.firestore {
 
       // WRITE: Allow a user to create, update, and delete their own document.
       allow create: if isOwner(restaurantId) && request.resource.data.id == restaurantId;
-      allow update: if isExistingOwner(restaurantId) && request.resource.data.id == restaurantId;
+      allow update: if isExistingOwner(restaurantId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(restaurantId);
     }
 
