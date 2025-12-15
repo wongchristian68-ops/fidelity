@@ -14,7 +14,6 @@ import { placeholderImages } from '@/lib/placeholder-images.json';
 import { useAuth } from '@/firebase/provider';
 import { 
   sendPasswordResetEmail,
-  fetchSignInMethodsForEmail,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInAnonymously
@@ -30,11 +29,9 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const bgImage = placeholderImages[0];
 
-
-  const handleRestoLogin = async () => {
+  const handleRestoSignUp = async () => {
     const email = restoEmail.trim().toLowerCase();
     const password = restoPassword.trim();
-
     if (!email || !password) {
       toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
       return;
@@ -43,51 +40,60 @@ export default function AuthPage() {
         toast({ title: 'Mot de passe trop court', description: 'Le mot de passe doit faire au moins 6 caractères.', variant: 'destructive' });
         return;
     }
-
     setIsLoading(true);
     try {
-        const methods = await fetchSignInMethodsForEmail(auth, email);
-        
-        if (methods.length > 0) {
-            // User exists, sign in
-            await signInWithEmailAndPassword(auth, email, password);
-            // AuthRedirect will handle navigation
-        } else {
-            // User doesn't exist, register
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-            
-            const restaurantNameFromEmail = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      const restaurantNameFromEmail = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-            const newRestaurant: Restaurant = {
-                id: user.uid,
-                name: restaurantNameFromEmail,
-                email: email,
-                loyaltyReward: 'Surprise du Chef',
-                stampsRequiredForReward: 10,
-                referralReward: 'Boisson offerte',
-                googleLink: '',
-                stampsGiven: 0,
-                referralsCount: 0,
-                rewardsGiven: 0,
-                qrCodeValue: null,
-                qrCodeExpiry: null,
-            };
-            await saveRestaurant(user.uid, newRestaurant);
-            // AuthRedirect will handle navigation
-        }
+      const newRestaurant: Restaurant = {
+          id: user.uid,
+          name: restaurantNameFromEmail,
+          email: email,
+          loyaltyReward: 'Surprise du Chef',
+          stampsRequiredForReward: 10,
+          referralReward: 'Boisson offerte',
+          googleLink: '',
+          stampsGiven: 0,
+          referralsCount: 0,
+          rewardsGiven: 0,
+          qrCodeValue: null,
+          qrCodeExpiry: null,
+      };
+      await saveRestaurant(user.uid, newRestaurant);
     } catch (error: any) {
-        let description = "Une erreur est survenue.";
-        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-            description = "L'adresse e-mail ou le mot de passe est incorrect.";
-        } else if (error.code === 'auth/email-already-in-use') {
-            description = "Cette adresse e-mail est déjà utilisée. Essayez de vous connecter.";
-        }
-        toast({ title: 'Erreur de connexion', description, variant: 'destructive' });
+      let description = "Une erreur est survenue lors de l'inscription.";
+      if (error.code === 'auth/email-already-in-use') {
+        description = "Cette adresse e-mail est déjà utilisée. Essayez de vous connecter.";
+      }
+      toast({ title: 'Erreur d\'inscription', description, variant: 'destructive' });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
+
+  const handleRestoSignIn = async () => {
+    const email = restoEmail.trim().toLowerCase();
+    const password = restoPassword.trim();
+    if (!email || !password) {
+      toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+      let description = "Une erreur est survenue lors de la connexion.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        description = "L'adresse e-mail ou le mot de passe est incorrect.";
+      }
+      toast({ title: 'Erreur de connexion', description, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   const handlePasswordReset = () => {
     const email = restoEmail.trim().toLowerCase();
@@ -184,7 +190,6 @@ export default function AuthPage() {
                 placeholder="Adresse e-mail" 
                 value={restoEmail}
                 onChange={(e) => setRestoEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
                 disabled={isLoading}
               />
               <Input 
@@ -193,20 +198,21 @@ export default function AuthPage() {
                 placeholder="Mot de passe" 
                 value={restoPassword}
                 onChange={(e) => setRestoPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
                 disabled={isLoading}
               />
-              <Button onClick={handleRestoLogin} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end hover:opacity-90 transition-opacity" disabled={isLoading}>
-                {isLoading ? "Chargement..." : "Se connecter / S'inscrire"}
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={handleRestoSignIn} className="w-full font-semibold bg-gray-800 text-white hover:bg-gray-700" disabled={isLoading}>
+                  {isLoading ? "Chargement..." : "Se connecter"}
+                </Button>
+                 <Button onClick={handleRestoSignUp} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end hover:opacity-90 transition-opacity" disabled={isLoading}>
+                  {isLoading ? "Chargement..." : "S'inscrire"}
+                </Button>
+              </div>
               <div className="text-center">
                 <Button variant="link" className="text-xs text-gray-500 h-auto p-0" onClick={handlePasswordReset} disabled={isLoading}>
                   Mot de passe oublié ?
                 </Button>
               </div>
-              <p className="text-xs text-gray-500 text-center pt-2">
-                Entrez vos identifiants pour vous connecter ou créer un nouveau compte.
-              </p>
             </CardContent>
           </Card>
 
