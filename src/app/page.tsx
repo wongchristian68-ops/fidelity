@@ -13,10 +13,13 @@ import { getClient, getRestaurant, saveRestaurant, getClients, saveClient, getRe
 import type { Client, Restaurant } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { placeholderImages } from '@/lib/placeholder-images.json';
+import { useAuth } from '@/firebase/provider';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 export default function AuthPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
   const [restoEmail, setRestoEmail] = useState('');
   const [restoPassword, setRestoPassword] = useState('');
   const [clientName, setClientName] = useState('');
@@ -70,6 +73,26 @@ export default function AuthPage() {
       sessionStorage.setItem('session', JSON.stringify({ id: newRestaurant.id, role: 'resto', name: newRestaurant.name }));
       router.push('/restaurant');
     }
+  };
+
+  const handlePasswordReset = () => {
+    const email = restoEmail.trim().toLowerCase();
+    if (!email) {
+      toast({ title: "Adresse e-mail requise", description: "Veuillez entrer votre adresse e-mail pour réinitialiser le mot de passe.", variant: "destructive" });
+      return;
+    }
+
+    sendPasswordResetEmail(auth, email)
+      .then(() => {
+        toast({ title: "E-mail de réinitialisation envoyé", description: "Veuillez consulter votre boîte de réception pour réinitialiser votre mot de passe." });
+      })
+      .catch((error) => {
+        let description = "Une erreur est survenue.";
+        if (error.code === 'auth/user-not-found') {
+            description = "Aucun compte n'est associé à cette adresse e-mail.";
+        }
+        toast({ title: "Erreur", description, variant: "destructive" });
+      });
   };
 
   const handleClientLogin = () => {
@@ -148,6 +171,11 @@ export default function AuthPage() {
               <Button onClick={handleRestoLogin} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end hover:opacity-90 transition-opacity">
                 Gérer mon Restaurant
               </Button>
+              <div className="text-center">
+                <Button variant="link" className="text-xs text-gray-500 h-auto p-0" onClick={handlePasswordReset}>
+                  Mot de passe oublié ?
+                </Button>
+              </div>
               <p className="text-xs text-gray-500 text-center pt-2">
                 Créez un compte ou connectez-vous.
               </p>
