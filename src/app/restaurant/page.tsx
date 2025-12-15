@@ -10,9 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QrCodeDisplay } from '@/components/restaurant/qr-code';
 import { QrCodeCountdown } from '@/components/restaurant/qr-code-countdown';
-import { LogOut, Sparkles, Stamp, Users, KeyRound, RefreshCw, AlertTriangle, Upload, Trash2, Gift, Users2, RotateCcw, Loader2 } from 'lucide-react';
+import { LogOut, Stamp, Users, KeyRound, RefreshCw, AlertTriangle, Upload, Trash2, Gift, Users2, RotateCcw, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { aiSuggestReward } from './actions';
 import { v4 as uuidv4 } from 'uuid';
 import Image from 'next/image';
 import {
@@ -39,7 +38,6 @@ export default function RestaurantPage() {
   const [referralRewardInput, setReferralRewardInput] = useState('');
   const [googleLinkInput, setGoogleLinkInput] = useState('');
   const [cardImageUrlInput, setCardImageUrlInput] = useState<string | null>(null);
-  const [isAiLoading, setIsAiLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeClients, setActiveClients] = useState(0);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -108,24 +106,6 @@ export default function RestaurantPage() {
       await saveRestaurant(restaurant.id, updatedRestaurant);
       setRestaurant(updatedRestaurant);
       toast({ title: "Configuration sauvegardée !" });
-    }
-  };
-
-  const handleAiSuggest = async (rewardType: 'loyalty' | 'referral') => {
-    if (!restaurant) return;
-    setIsAiLoading(true);
-    try {
-      const result = await aiSuggestReward(restaurant.name);
-      if (rewardType === 'loyalty') {
-        setLoyaltyRewardInput(result);
-      } else {
-        setReferralRewardInput(result);
-      }
-      toast({ title: '✨ Suggestion IA', description: 'Une nouvelle idée de récompense a été générée.' });
-    } catch (error) {
-      toast({ title: 'Erreur IA', description: 'Impossible de générer une suggestion.', variant: 'destructive' });
-    } finally {
-      setIsAiLoading(false);
     }
   };
 
@@ -252,9 +232,6 @@ export default function RestaurantPage() {
                         value={loyaltyRewardInput}
                         onChange={(e) => setLoyaltyRewardInput(e.target.value)}
                         placeholder="Ex: Dessert offert" />
-                        <Button onClick={() => handleAiSuggest('loyalty')} disabled={isAiLoading} variant="outline" className="bg-purple-100 text-purple-600 hover:bg-purple-200 border-purple-200">
-                            <Sparkles className="w-4 h-4" />
-                        </Button>
                     </div>
                 </div>
                 <div>
@@ -278,9 +255,6 @@ export default function RestaurantPage() {
                   className="mt-1"
                   placeholder="Ex: Boisson offerte"
                 />
-                 <Button onClick={() => handleAiSuggest('referral')} disabled={isAiLoading} variant="outline" className="bg-purple-100 text-purple-600 hover:bg-purple-200 border-purple-200 mt-1">
-                  <Sparkles className="w-4 h-4" />
-                </Button>
               </div>
             </div>
              <div>
