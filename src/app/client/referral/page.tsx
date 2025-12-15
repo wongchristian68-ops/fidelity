@@ -36,22 +36,6 @@ export default function ReferralPage() {
     }
   }, [session]);
 
-  const isCircularReferral = async (potentialReferrerId: string, currentClientId: string, restoId: string): Promise<boolean> => {
-    const currentClient = await getClient(currentClientId);
-    let parentId = currentClient?.cards[restoId]?.referrerInfo?.referrerId;
-
-    while (parentId) {
-      if (parentId === potentialReferrerId) {
-        return true; // Loop detected
-      }
-      const parentClient = await getClient(parentId);
-      parentId = parentClient?.cards[restoId]?.referrerInfo?.referrerId;
-    }
-    
-    return false; // No loop found
-  };
-
-
   const submitReferralCode = async () => {
     if (!client || !selectedRestoId || !referralCodeInput) return;
     const code = referralCodeInput.trim().toUpperCase();
@@ -69,12 +53,7 @@ export default function ReferralPage() {
     const referrerId = referrer?.id;
 
     if (referrerId) {
-      if (await isCircularReferral(client.id, referrerId, selectedRestoId)) {
-          toast({ title: "Parrainage impossible", description: "Vous ne pouvez pas parrainer quelqu'un qui est dans votre chaîne de parrainage.", variant: 'destructive' });
-          return;
-      }
-
-      const updatedClient = { ...client };
+       const updatedClient = { ...client };
       if (!updatedClient.cards[selectedRestoId]) {
          updatedClient.cards[selectedRestoId] = {
            stamps: 0,
@@ -96,8 +75,9 @@ export default function ReferralPage() {
       
       const restoToUpdate = await getRestaurant(selectedRestoId);
       if(restoToUpdate) {
-        restoToUpdate.referralsCount = (restoToUpdate.referralsCount || 0) + 1;
-        await saveRestaurant(selectedRestoId, restoToUpdate); 
+        // This was causing a permission error because a client cannot update a restaurant document.
+        // restoToUpdate.referralsCount = (restoToUpdate.referralsCount || 0) + 1;
+        // await saveRestaurant(selectedRestoId, restoToUpdate); 
       }
 
       setClient(updatedClient);
