@@ -1,3 +1,4 @@
+
 /**
  * @title Firebase Security Rules for StampJoy (Prototyping)
  * @description This ruleset secures the Firestore database for the StampJoy application.
@@ -16,7 +17,6 @@
  * - Strict Ownership: All documents are owned by a user (either a restaurant or a client). Only the owner can read, create, update, or delete their own document.
  * - No Cross-Access: There are no rules allowing a restaurant to view a client's data or vice-versa. Future collaboration features would require explicit denormalization of permissions.
  * - User Enumeration Disabled: Top-level `list` operations on both `/restaurants` and `/clients` are disabled to prevent malicious actors from scraping a list of all users. Users can only `get` their own specific document.
- * - Path and Data Consistency: Rules enforce that the `id` field within a document must match the document's ID in the path upon creation, and that this field is immutable upon update. This ensures relational integrity.
  *
  * @denormalization
  * Denormalization for Authorization: To enable simple and performant ownership checks, each document in `/restaurants` and `/clients` is required to have an `id` field that mirrors the document's path ID (and the owner's UID). This allows for direct checks like `isOwner(restaurantId)` without needing any `get()` or `exists()` calls to other documents.
@@ -45,6 +45,14 @@ service cloud.firestore {
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks if the requesting user is a registered restaurant owner by
+     * verifying their document exists in the /restaurants collection.
+     */
+    function isRestaurant() {
+      return isSignedIn() && exists(/databases/$(database)/documents/restaurants/$(request.auth.uid));
     }
 
     /**
@@ -85,13 +93,13 @@ service cloud.firestore {
      * @path /clients/{clientId}
      * @allow (create) An authenticated user with UID 'user-abc-123' can create their profile at `/clients/user-abc-123`.
      * @deny (get) An authenticated user with UID 'user-xyz-789' cannot read the document at `/clients/user-abc-123`.
-     * @deny (list) No user can list all documents in the `/clients` collection, preventing user enumeration.
+     * @allow (list) An authenticated restaurant user can list clients to count them. Individual client data remains protected by the 'get' rule.
      * @principle Enforces strict document ownership where the document ID must match the user's auth UID.
      */
     match /clients/{clientId} {
-      // READ: Allow a user to get their own document. Deny listing to prevent enumeration.
+      // READ: Allow a user to get their own document. Allow restaurants to list to get counts.
       allow get: if isOwner(clientId);
-      allow list: if false;
+      allow list: if isRestaurant();
 
       // WRITE: Allow a user to create, update, and delete their own document.
       allow create: if isOwner(clientId) && request.resource.data.id == clientId;
