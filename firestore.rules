@@ -84,7 +84,7 @@ service cloud.firestore {
 
       // WRITE: Allow a user to create, update, and delete their own document.
       allow create: if isOwner(restaurantId) && request.resource.data.id == restaurantId;
-      allow update: if isExistingOwner(restaurantId);
+      allow update: if isExistingOwner(restaurantId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(restaurantId);
     }
 
