@@ -18,10 +18,12 @@ import {
   createUserWithEmailAndPassword,
   signInAnonymously
 } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 export default function AuthPage() {
   const { toast } = useToast();
   const auth = useAuth();
+  const router = useRouter();
   const [restoEmail, setRestoEmail] = useState('');
   const [restoPassword, setRestoPassword] = useState('');
   const [clientName, setClientName] = useState('');
@@ -117,7 +119,7 @@ export default function AuthPage() {
       .finally(() => setIsLoading(false));
   };
 
-  const handleClientLogin = () => {
+  const handleClientLogin = async () => {
     const name = clientName.trim();
     const phone = clientPhone.trim();
 
@@ -127,43 +129,38 @@ export default function AuthPage() {
     }
     
     setIsLoading(true);
-    // Use non-blocking sign-in. AuthRedirect will handle navigation.
-    initiateAnonymousSignIn(auth, async (user) => {
-        // This callback runs after successful sign-in
-        try {
-            if (!user) throw new Error("Authentication failed.");
+    try {
+        const userCredential = await signInAnonymously(auth);
+        const user = userCredential.user;
 
-            let client = await getClient(user.uid);
+        if (!user) throw new Error("Authentication failed.");
 
-            if (client) {
-                if (client.name !== name || client.phone !== phone) {
-                    client.name = name;
-                    client.phone = phone;
-                    await saveClient(user.uid, client);
-                }
-            } else {
-                const newClient: Client = {
-                    id: user.uid,
-                    name,
-                    phone,
-                    cards: {},
-                };
-                await saveClient(user.uid, newClient);
+        let client = await getClient(user.uid);
+
+        if (client) {
+            if (client.name !== name || client.phone !== phone) {
+                client.name = name;
+                client.phone = phone;
+                await saveClient(user.uid, client);
             }
-        } catch (error) {
-            console.error("Client profile creation/update failed", error);
-            toast({ title: 'Erreur de profil', description: "Impossible de créer ou mettre à jour votre profil.", variant: 'destructive' });
-            // Optionally sign out the user if profile creation fails
-            auth.signOut();
-        } finally {
-             setIsLoading(false);
+        } else {
+            const newClient: Client = {
+                id: user.uid,
+                name,
+                phone,
+                cards: {},
+            };
+            await saveClient(user.uid, newClient);
         }
-    }, (error) => {
-        // This callback runs if sign-in fails
-        console.error("Client anonymous login failed", error);
-        toast({ title: 'Erreur de connexion', description: "Impossible de se connecter. Veuillez réessayer.", variant: 'destructive' });
-        setIsLoading(false);
-    });
+        // At this point, user is logged in and profile is saved.
+        // AuthRedirect will handle redirection.
+    } catch (error) {
+        console.error("Client login or profile creation failed", error);
+        toast({ title: 'Erreur de connexion', description: "Impossible de se connecter ou de créer le profil. Veuillez réessayer.", variant: 'destructive' });
+        auth.signOut();
+    } finally {
+         setIsLoading(false);
+    }
   };
 
   return (
