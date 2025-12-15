@@ -1,6 +1,7 @@
 export interface Restaurant {
   id: string;
   name: string;
+  email: string;
   loyaltyReward: string; // Récompense pour X tampons
   stampsRequiredForReward: number; // Nombre de tampons pour la récompense
   referralReward: string; // Récompense pour le parrain
@@ -8,8 +9,6 @@ export interface Restaurant {
   stampsGiven: number;
   rewardsGiven: number; // Ajout du compteur de récompenses données
   referralsCount: number;
-  pin: string;
-  pinEditable: boolean;
   qrCodeValue: string | null;
   qrCodeExpiry: number | null; // Timestamp
   cardImageUrl?: string;

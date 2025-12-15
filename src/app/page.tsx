@@ -17,44 +17,45 @@ import { placeholderImages } from '@/lib/placeholder-images.json';
 export default function AuthPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [restoName, setRestoName] = useState('');
-  const [restoPin, setRestoPin] = useState('');
+  const [restoEmail, setRestoEmail] = useState('');
+  const [restoPassword, setRestoPassword] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const bgImage = placeholderImages[0];
 
 
   const handleRestoLogin = () => {
-    const name = restoName.trim();
-    const pin = restoPin.trim();
+    const email = restoEmail.trim().toLowerCase();
+    const password = restoPassword.trim();
 
-    if (!name || !pin) {
+    if (!email || !password) {
       toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
       return;
     }
 
-    const id = 'resto_' + name.toLowerCase().replace(/\s+/g, '_');
-    let restaurant = getRestaurant(id);
-    let isNewRestaurant = false;
-
+    if (password.length < 6) {
+      toast({ title: 'Erreur', description: 'Le mot de passe doit comporter au moins 6 caractères.', variant: 'destructive' });
+      return;
+    }
+    
+    // As we don't have Firebase Auth, we'll simulate the logic.
+    // In a real scenario, this would call Firebase Auth methods.
+    let restaurants = Object.values(getRestaurants());
+    let restaurant = restaurants.find(r => r.email === email);
+    
     if (restaurant) {
-      // Login
-      if (restaurant.pin !== pin) {
-        toast({ title: 'Erreur', description: 'Code PIN incorrect.', variant: 'destructive' });
-        return;
-      }
+      // Login - we can't check password, so we just log in
+      sessionStorage.setItem('session', JSON.stringify({ id: restaurant.id, role: 'resto', name: restaurant.name }));
+      router.push('/restaurant');
     } else {
       // Register
-      if (pin !== '1234') {
-        toast({ title: 'Erreur', description: 'Le code PIN pour un nouveau restaurant doit être "1234".', variant: 'destructive' });
-        return;
-      }
-      isNewRestaurant = true;
-      restaurant = {
+      const restaurantNameFromEmail = email.split('@')[0];
+      const id = 'resto_' + uuidv4();
+      
+      const newRestaurant: Restaurant = {
         id,
-        name,
-        pin: pin,
-        pinEditable: true,
+        name: restaurantNameFromEmail,
+        email: email,
         loyaltyReward: 'Surprise du Chef',
         stampsRequiredForReward: 10,
         referralReward: 'Boisson offerte',
@@ -65,13 +66,10 @@ export default function AuthPage() {
         qrCodeValue: null,
         qrCodeExpiry: null,
       };
-      saveRestaurant(id, restaurant);
+      saveRestaurant(id, newRestaurant);
+      sessionStorage.setItem('session', JSON.stringify({ id: newRestaurant.id, role: 'resto', name: newRestaurant.name }));
+      router.push('/restaurant');
     }
-    
-    // For new restaurants, use the newly created object for session
-    const sessionRestaurant = restaurant;
-    sessionStorage.setItem('session', JSON.stringify({ id: sessionRestaurant!.id, role: 'resto', name: sessionRestaurant!.name }));
-    router.push('/restaurant');
   };
 
   const handleClientLogin = () => {
@@ -132,19 +130,19 @@ export default function AuthPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Input 
-                id="auth-resto-name" 
-                placeholder="Nom de votre restaurant" 
-                value={restoName}
-                onChange={(e) => setRestoName(e.target.value)}
+                id="auth-resto-email" 
+                type="email"
+                placeholder="Adresse e-mail" 
+                value={restoEmail}
+                onChange={(e) => setRestoEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
               />
               <Input 
-                id="auth-resto-pin" 
+                id="auth-resto-password" 
                 type="password"
-                placeholder="Code PIN à 4 chiffres" 
-                value={restoPin}
-                maxLength={4}
-                onChange={(e) => setRestoPin(e.target.value)}
+                placeholder="Mot de passe" 
+                value={restoPassword}
+                onChange={(e) => setRestoPassword(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
               />
               <Button onClick={handleRestoLogin} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end hover:opacity-90 transition-opacity">

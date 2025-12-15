@@ -38,7 +38,6 @@ export default function RestaurantPage() {
   const [referralRewardInput, setReferralRewardInput] = useState('');
   const [googleLinkInput, setGoogleLinkInput] = useState('');
   const [cardImageUrlInput, setCardImageUrlInput] = useState<string | null>(null);
-  const [pinInput, setPinInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeClients, setActiveClients] = useState(0);
@@ -52,7 +51,6 @@ export default function RestaurantPage() {
       setReferralRewardInput(currentRestaurant?.referralReward || '');
       setGoogleLinkInput(currentRestaurant?.googleLink || '');
       setCardImageUrlInput(currentRestaurant?.cardImageUrl || null);
-      setPinInput(currentRestaurant?.pin || '');
 
       const allClients = Object.values(getClients());
       const clientsWithCard = allClients.filter(client => client.cards[session.id]);
@@ -91,15 +89,6 @@ export default function RestaurantPage() {
 
   const handleSaveConfig = () => {
     if (restaurant) {
-      let pinUpdated = false;
-      if (restaurant.pinEditable && pinInput.length === 4 && pinInput !== restaurant.pin) {
-        if (pinInput === '1234') {
-          toast({ title: 'Erreur', description: 'Le nouveau PIN ne peut pas être "1234".', variant: 'destructive' });
-          return;
-        }
-        pinUpdated = true;
-      }
-
       const updatedRestaurant = { 
         ...restaurant, 
         loyaltyReward: loyaltyRewardInput,
@@ -107,8 +96,6 @@ export default function RestaurantPage() {
         referralReward: referralRewardInput,
         googleLink: googleLinkInput,
         cardImageUrl: cardImageUrlInput || '',
-        pin: pinUpdated ? pinInput : restaurant.pin,
-        pinEditable: pinUpdated ? false : restaurant.pinEditable,
       };
       saveRestaurant(restaurant.id, updatedRestaurant);
       setRestaurant(updatedRestaurant);
@@ -324,18 +311,9 @@ export default function RestaurantPage() {
              <div>
                 <Label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-2">
                     <KeyRound className="w-4 h-4" />
-                    Code PIN
+                    Mot de passe
                 </Label>
-                <Input 
-                    type="password"
-                    value={pinInput}
-                    maxLength={4}
-                    onChange={(e) => e.target.value.match(/^\d{0,4}$/) && setPinInput(e.target.value)}
-                    className="mt-1 font-mono tracking-widest"
-                    disabled={!restaurant.pinEditable}
-                />
-                {!restaurant.pinEditable && <p className="text-xs text-gray-500 mt-1">Votre code PIN ne peut plus être modifié.</p>}
-                 {restaurant.pinEditable && <p className="text-xs text-gray-500 mt-1">Vous ne pouvez changer votre PIN qu'une seule fois.</p>}
+                <p className="text-sm text-gray-600 mt-1">La gestion du mot de passe se fait via les services d'authentification standards (ex: lien "mot de passe oublié" sur la page de connexion).</p>
             </div>
             
             <div className="pt-4 border-t space-y-2">
