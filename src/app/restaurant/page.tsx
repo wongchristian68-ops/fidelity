@@ -33,6 +33,7 @@ export default function RestaurantPage() {
   const { session, isLoading: isSessionLoading, logout } = useSession();
   const { toast } = useToast();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [nameInput, setNameInput] = useState('');
   const [loyaltyRewardInput, setLoyaltyRewardInput] = useState('');
   const [stampsRequiredInput, setStampsRequiredInput] = useState(10);
   const [referralRewardInput, setReferralRewardInput] = useState('');
@@ -49,6 +50,7 @@ export default function RestaurantPage() {
       const currentRestaurant = await getRestaurant(session.id);
       if (currentRestaurant) {
         setRestaurant(currentRestaurant);
+        setNameInput(currentRestaurant.name || '');
         setLoyaltyRewardInput(currentRestaurant.loyaltyReward || '');
         setStampsRequiredInput(currentRestaurant.stampsRequiredForReward || 10);
         setReferralRewardInput(currentRestaurant.referralReward || '');
@@ -96,6 +98,7 @@ export default function RestaurantPage() {
     if (restaurant) {
       const updatedRestaurant = { 
         ...restaurant, 
+        name: nameInput,
         loyaltyReward: loyaltyRewardInput,
         stampsRequiredForReward: stampsRequiredInput,
         referralReward: referralRewardInput,
@@ -230,6 +233,16 @@ export default function RestaurantPage() {
             <CardTitle className="font-headline">Configuration</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+                <Label htmlFor="restaurant-name" className="text-xs font-semibold text-gray-500 uppercase">Nom du restaurant</Label>
+                <Input
+                id="restaurant-name"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                placeholder="Le nom de votre établissement"
+                className="mt-1"
+                 />
+            </div>
              <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">
                     <Label htmlFor="loyalty-reward" className="text-xs font-semibold text-gray-500 uppercase">Récompense de fidélité</Label>
@@ -385,3 +398,5 @@ export default function RestaurantPage() {
     </div>
   );
 }
+
+    
