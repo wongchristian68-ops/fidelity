@@ -80,28 +80,12 @@ export async function saveRestaurant(id: string, data: Restaurant): Promise<void
 
 export async function deleteRestaurant(id: string): Promise<void> {
   const db = getDb();
-  const batch = writeBatch(db);
-
   const restaurantRef = doc(db, 'restaurants', id);
-  batch.delete(restaurantRef);
-
-  const clientsSnapshot = await getDocs(collection(db, 'clients')).catch(e => {
-    const err = new FirestorePermissionError({ path: 'clients', operation: 'list'});
-    errorEmitter.emit('permission-error', err);
-    throw err;
-  });
   
-  clientsSnapshot.forEach((clientDoc) => {
-    const clientRef = doc(db, 'clients', clientDoc.id);
-    batch.update(clientRef, {
-      [`cards.${id}`]: deleteField(),
-    });
-  });
-
-  await batch.commit().catch((error) => {
+  await deleteDoc(restaurantRef).catch((error) => {
       const permissionError = new FirestorePermissionError({
-        path: `batch write for restaurant ${id} deletion`,
-        operation: 'write',
+        path: restaurantRef.path,
+        operation: 'delete',
       });
       errorEmitter.emit('permission-error', permissionError);
       throw permissionError;
