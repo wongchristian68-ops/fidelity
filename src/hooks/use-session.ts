@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useUser } from '@/firebase';
-import { getClient, getRestaurant } from '@/lib/db';
+import { getClient, getRestaurant, saveClient } from '@/lib/db';
 import type { Session, Client, Restaurant } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { signOut } from 'firebase/auth';
@@ -58,19 +59,18 @@ export function useSession() {
           });
         } else {
             // This can happen if the profile document hasn't been created yet.
-            // For anonymous users, we create one on the fly.
-            if(user.isAnonymous && !profile) {
-                const newClient: Client = {
-                    id: user.uid,
-                    name: 'Nouveau Client', // Placeholder name
-                    phone: '', // Phone is handled on the login page now
-                    cards: {},
-                };
-                await saveClient(user.uid, newClient);
-                setSession({ id: user.uid, name: newClient.name, role: 'client'});
-            } else {
+            // For anonymous users, we create one on the fly on the login page.
+            // We'll wait for the login flow to create the user profile.
+            // if we are here it might be during login flow, so we wait.
+            // if we already have a user but no profile, something is wrong.
+             if (user.isAnonymous && !profile) {
+                // This might happen if the user authenticated but the page reloaded
+                // before the profile was created on the login page. We can try to fetch it again shortly.
+                // For now, we assume it's being created.
+                setSession(null);
+             } else {
                  setSession(null);
-            }
+             }
         }
       } catch (e: any) {
         console.error("Error fetching user profile:", e);
