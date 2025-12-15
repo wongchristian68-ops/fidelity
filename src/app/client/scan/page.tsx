@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import QrScanner from '@/components/client/qr-scanner';
-import type { Client, Restaurant, StampQrCode, ClientCard } from '@/lib/types';
+import type { Client, Restaurant, StampQrCode, ClientCard, RestaurantUpdate } from '@/lib/types';
 import { getClient, getRestaurant, saveClient, saveRestaurant, updateRestaurant } from '@/lib/db';
 import { useSession } from '@/hooks/use-session';
 import { textToSpeech } from '../actions';
@@ -99,13 +99,13 @@ export default function ScanPage() {
     
     let newStamps = clientCard.stamps + 1;
     const stampsRequired = resto.stampsRequiredForReward || 10;
+    let restaurantUpdates: RestaurantUpdate = {
+        stampsGiven: (resto.stampsGiven || 0) + 1
+    };
     
     // Check for referral reward on first stamp for this card
     if (clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
-        // Increment the restaurant's referral count.
-        await updateRestaurant(restoId, { 
-            referralsCount: (resto.referralsCount || 0) + 1,
-        });
+        restaurantUpdates.referralsCount = (resto.referralsCount || 0) + 1;
         
         clientCard.referrerInfo.isActivated = true;
         
@@ -122,7 +122,7 @@ export default function ScanPage() {
 
     if (newStamps >= stampsRequired) {
       client.cards[restoId].stamps = 0; 
-      await updateRestaurant(restoId, { rewardsGiven: (resto.rewardsGiven || 0) + 1 });
+      restaurantUpdates.rewardsGiven = (resto.rewardsGiven || 0) + 1;
       sessionStorage.setItem('rewardUnlocked', restoId);
       await playNotification(`Félicitations ! Vous avez débloqué: ${resto.loyaltyReward}`);
     } else {
@@ -131,8 +131,7 @@ export default function ScanPage() {
     }
 
     await saveClient(client.id, client);
-    
-    await updateRestaurant(restoId, { stampsGiven: (resto.stampsGiven || 0) + 1 });
+    await updateRestaurant(restoId, restaurantUpdates);
     
     toast({ title: "Succès!", description: `Tampon ajouté chez ${resto.name}!` });
   };
