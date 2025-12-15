@@ -80,7 +80,7 @@ service cloud.firestore {
     match /restaurants/{restaurantId} {
       // READ: Allow a user to get their own document. Deny listing to prevent enumeration.
       allow get: if isOwner(restaurantId);
-      allow list: if false;
+      allow list: if isSignedIn();
 
       // WRITE: Allow a user to create, update, and delete their own document.
       allow create: if isOwner(restaurantId) && request.resource.data.id == restaurantId;
