@@ -15,6 +15,8 @@ import {
   deleteField,
 } from 'firebase/firestore';
 import type { Restaurant, Client, Review } from './types';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const isClient = typeof window !== 'undefined';
 
@@ -28,37 +30,67 @@ function getDb() {
 // --- Restaurants ---
 export async function getRestaurants(): Promise<{ [id: string]: Restaurant }> {
   const db = getDb();
-  const snapshot = await getDocs(collection(db, 'restaurants'));
-  const restaurants: { [id: string]: Restaurant } = {};
-  snapshot.forEach((doc) => {
-    restaurants[doc.id] = doc.data() as Restaurant;
-  });
-  return restaurants;
+  const restaurantsRef = collection(db, 'restaurants');
+  try {
+    const snapshot = await getDocs(restaurantsRef);
+    const restaurants: { [id: string]: Restaurant } = {};
+    snapshot.forEach((doc) => {
+      restaurants[doc.id] = doc.data() as Restaurant;
+    });
+    return restaurants;
+  } catch (error) {
+    const permissionError = new FirestorePermissionError({
+      path: restaurantsRef.path,
+      operation: 'list',
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw permissionError;
+  }
 }
 
 export async function getRestaurant(id: string): Promise<Restaurant | null> {
   const db = getDb();
   const docRef = doc(db, 'restaurants', id);
-  const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? (docSnap.data() as Restaurant) : null;
+  try {
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? (docSnap.data() as Restaurant) : null;
+  } catch (error) {
+    const permissionError = new FirestorePermissionError({
+      path: docRef.path,
+      operation: 'get',
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw permissionError;
+  }
 }
 
 export async function saveRestaurant(id: string, data: Restaurant): Promise<void> {
   const db = getDb();
   const docRef = doc(db, 'restaurants', id);
-  await setDoc(docRef, data, { merge: true });
+  await setDoc(docRef, data, { merge: true }).catch((error) => {
+    const permissionError = new FirestorePermissionError({
+      path: docRef.path,
+      operation: 'write',
+      requestResourceData: data,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw permissionError;
+  });
 }
 
 export async function deleteRestaurant(id: string): Promise<void> {
   const db = getDb();
   const batch = writeBatch(db);
 
-  // Delete the restaurant document
   const restaurantRef = doc(db, 'restaurants', id);
   batch.delete(restaurantRef);
 
-  // Remove restaurant cards from all clients
-  const clientsSnapshot = await getDocs(collection(db, 'clients'));
+  const clientsSnapshot = await getDocs(collection(db, 'clients')).catch(e => {
+    const err = new FirestorePermissionError({ path: 'clients', operation: 'list'});
+    errorEmitter.emit('permission-error', err);
+    throw err;
+  });
+  
   clientsSnapshot.forEach((clientDoc) => {
     const clientRef = doc(db, 'clients', clientDoc.id);
     batch.update(clientRef, {
@@ -66,46 +98,97 @@ export async function deleteRestaurant(id: string): Promise<void> {
     });
   });
 
-  await batch.commit();
+  await batch.commit().catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: `batch write for restaurant ${id} deletion`,
+        operation: 'write',
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      throw permissionError;
+  });
 }
 
 export async function resetRestaurantStats(id: string): Promise<void> {
     const db = getDb();
     const docRef = doc(db, 'restaurants', id);
-    await updateDoc(docRef, {
+    const data = {
         stampsGiven: 0,
         referralsCount: 0,
         rewardsGiven: 0,
+    };
+    await updateDoc(docRef, data).catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+        requestResourceData: data,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      throw permissionError;
     });
 }
 
 // --- Clients ---
 export async function getClients(): Promise<{ [id: string]: Client }> {
   const db = getDb();
-  const snapshot = await getDocs(collection(db, 'clients'));
-  const clients: { [id: string]: Client } = {};
-  snapshot.forEach((doc) => {
-    clients[doc.id] = doc.data() as Client;
-  });
-  return clients;
+  const clientsRef = collection(db, 'clients');
+  try {
+    const snapshot = await getDocs(clientsRef);
+    const clients: { [id: string]: Client } = {};
+    snapshot.forEach((doc) => {
+      clients[doc.id] = doc.data() as Client;
+    });
+    return clients;
+  } catch (error) {
+    const permissionError = new FirestorePermissionError({
+      path: clientsRef.path,
+      operation: 'list',
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw permissionError;
+  }
 }
 
 export async function getClient(id: string): Promise<Client | null> {
   const db = getDb();
   const docRef = doc(db, 'clients', id);
-  const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? (docSnap.data() as Client) : null;
+  try {
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? (docSnap.data() as Client) : null;
+  } catch (error) {
+    const permissionError = new FirestorePermissionError({
+      path: docRef.path,
+      operation: 'get',
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw permissionError;
+  }
 }
 
 export async function saveClient(id: string, data: Client): Promise<void> {
   const db = getDb();
   const docRef = doc(db, 'clients', id);
-  await setDoc(docRef, data, { merge: true });
+  await setDoc(docRef, data, { merge: true }).catch((error) => {
+    const permissionError = new FirestorePermissionError({
+      path: docRef.path,
+      operation: 'write',
+      requestResourceData: data,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw permissionError;
+  });
 }
 
 export async function deleteClient(id: string): Promise<void> {
   const db = getDb();
-  await deleteDoc(doc(db, 'clients', id));
+  const docRef = doc(db, 'clients', id);
+  await deleteDoc(docRef).catch((error) => {
+    const permissionError = new FirestorePermissionError({
+      path: docRef.path,
+      operation: 'delete',
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw permissionError;
+  });
 }
 
 // --- Reviews (Simulated) ---
@@ -120,7 +203,9 @@ const FAKE_REVIEWS: { [restoId: string]: Review[] } = {
 
 export function getRecentReviews(restoId: string): Review[] {
     const reviews = get<Review[]>('reviews') || [];
-    const restoReviews = FAKE_REVIEWS[restoId] || [];
+    const restoKey = Object.keys(FAKE_REVIEWS).find(key => restoId.includes(key.split('_')[1]));
+    const restoReviews = restoKey ? FAKE_REVIEWS[restoKey] : [];
+    
     const savedResponses = reviews.filter(r => r.id.startsWith(restoId));
     
     return restoReviews.map(rr => {
@@ -130,16 +215,16 @@ export function getRecentReviews(restoId: string): Review[] {
 }
 
 export function saveReviewResponse(restoId: string, reviewId: string, response: string): void {
-  // This is a mock save. In a real app, this would update a database.
-  // We'll use localStorage to persist the response for the demo
    const reviews = get<Review[]>('reviews') || [];
-   const reviewIndex = reviews.findIndex(r => r.id === `${restoId}_${reviewId}`);
+   const uniqueId = `${restoId}_${reviewId}`;
+   const reviewIndex = reviews.findIndex(r => r.id === uniqueId);
     if (reviewIndex !== -1) {
         reviews[reviewIndex].aiResponse = response;
     } else {
-        const originalReview = FAKE_REVIEWS[restoId]?.find(r => r.id === reviewId);
+        const restoKey = Object.keys(FAKE_REVIEWS).find(key => restoId.includes(key.split('_')[1]));
+        const originalReview = restoKey ? FAKE_REVIEWS[restoKey]?.find(r => r.id === reviewId) : undefined;
         if (originalReview) {
-            reviews.push({ ...originalReview, id: `${restoId}_${reviewId}`, aiResponse: response });
+            reviews.push({ ...originalReview, id: uniqueId, aiResponse: response });
         }
     }
     set('reviews', reviews);
