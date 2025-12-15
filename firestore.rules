@@ -97,9 +97,10 @@ service cloud.firestore {
      * @principle Enforces strict document ownership where the document ID must match the user's auth UID.
      */
     match /clients/{clientId} {
-      // READ: Allow a user to get their own document. Allow restaurants to list to get counts.
+      // READ: Allow a user to get their own document.
       allow get: if isOwner(clientId);
-      allow list: if isRestaurant();
+      // LIST: Allow targeted queries for referral codes, but not a full collection scan.
+      allow list: if isSignedIn() && request.query.keys().hasOnly(['limit', 'offset', 'where']) && request.query.where[0][0].split('.')[0] == 'cards';
 
       // WRITE: Allow a user to create, update, and delete their own document.
       allow create: if isOwner(clientId) && request.resource.data.id == clientId;

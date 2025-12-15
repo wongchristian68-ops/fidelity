@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from '@/hooks/use-session';
-import { getClient, getClients, getRestaurant, getRestaurants, saveClient, saveRestaurant } from '@/lib/db';
+import { getClient, getClientsWithReferralCode, getRestaurant, getRestaurants, saveClient, saveRestaurant } from '@/lib/db';
 import type { Client, Restaurant } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,17 +36,15 @@ export default function ReferralPage() {
     }
   }, [session]);
 
-  const isCircularReferral = (potentialReferrerId: string, currentClientId: string, restoId: string, allClients: {[id: string]: Client}): boolean => {
-    let parentId = allClients[currentClientId]?.cards[restoId]?.referrerInfo?.referrerId;
-    let currentId = currentClientId;
+  const isCircularReferral = async (potentialReferrerId: string, currentClientId: string, restoId: string): Promise<boolean> => {
+    const currentClient = await getClient(currentClientId);
+    let parentId = currentClient?.cards[restoId]?.referrerInfo?.referrerId;
 
-    // We go up the sponsorship chain
     while (parentId) {
       if (parentId === potentialReferrerId) {
         return true; // Loop detected
       }
-      currentId = parentId;
-      const parentClient = allClients[currentId];
+      const parentClient = await getClient(parentId);
       parentId = parentClient?.cards[restoId]?.referrerInfo?.referrerId;
     }
     
@@ -66,14 +64,12 @@ export default function ReferralPage() {
       return;
     }
     
-    const allClients = await getClients();
-    const referrerId = Object.keys(allClients).find(id => allClients[id].cards[selectedRestoId]?.referralCode === code);
+    const referrers = await getClientsWithReferralCode(code, selectedRestoId);
+    const referrer = referrers.length > 0 ? referrers[0] : null;
+    const referrerId = referrer?.id;
 
     if (referrerId) {
-      const referrer = await getClient(referrerId);
-      if (!referrer) return;
-
-      if (isCircularReferral(client.id, referrerId, selectedRestoId, allClients)) {
+      if (await isCircularReferral(client.id, referrerId, selectedRestoId)) {
           toast({ title: "Parrainage impossible", description: "Vous ne pouvez pas parrainer quelqu'un qui est dans votre chaîne de parrainage.", variant: 'destructive' });
           return;
       }
@@ -83,6 +79,7 @@ export default function ReferralPage() {
          updatedClient.cards[selectedRestoId] = {
            stamps: 0,
            referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+           scannedCodes: [],
            referrerInfo: null
          };
       }

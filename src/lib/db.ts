@@ -13,6 +13,7 @@ import {
   orderBy,
   updateDoc,
   deleteField,
+  where,
 } from 'firebase/firestore';
 import type { Restaurant, Client, Review, RestaurantUpdate } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -141,6 +142,28 @@ export async function getClients(): Promise<{ [id: string]: Client }> {
     const permissionError = new FirestorePermissionError({
       path: clientsRef.path,
       operation: 'list',
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw permissionError;
+  }
+}
+
+export async function getClientsWithReferralCode(code: string, restoId: string): Promise<Client[]> {
+  const db = getDb();
+  const clientsRef = collection(db, 'clients');
+  const q = query(clientsRef, where(`cards.${restoId}.referralCode`, "==", code));
+
+  try {
+    const snapshot = await getDocs(q);
+    const clients: Client[] = [];
+    snapshot.forEach((doc) => {
+      clients.push({ id: doc.id, ...doc.data() } as Client);
+    });
+    return clients;
+  } catch (error) {
+    const permissionError = new FirestorePermissionError({
+      path: clientsRef.path,
+      operation: 'list', // list is correct for queries
     });
     errorEmitter.emit('permission-error', permissionError);
     throw permissionError;
