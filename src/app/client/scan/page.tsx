@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import QrScanner from '@/components/client/qr-scanner';
 import type { Client, Restaurant, StampQrCode, ClientCard } from '@/lib/types';
-import { getClient, getRestaurant, saveClient, saveRestaurant } from '@/lib/db';
+import { getClient, getRestaurant, saveClient, saveRestaurant, updateRestaurant } from '@/lib/db';
 import { useSession } from '@/hooks/use-session';
 import { textToSpeech } from '../actions';
 import { useState, useRef, useEffect } from 'react';
@@ -102,11 +102,10 @@ export default function ScanPage() {
     
     // Check for referral reward on first stamp for this card
     if (clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
-        // Instead of rewarding the referrer directly (which causes permission issues),
-        // we will now just increment the restaurant's referral count.
-        const updatedResto = { ...resto };
-        updatedResto.referralsCount = (updatedResto.referralsCount || 0) + 1;
-        await saveRestaurant(restoId, updatedResto);
+        // Increment the restaurant's referral count.
+        await updateRestaurant(restoId, { 
+            referralsCount: (resto.referralsCount || 0) + 1,
+        });
         
         clientCard.referrerInfo.isActivated = true;
         
@@ -123,7 +122,7 @@ export default function ScanPage() {
 
     if (newStamps >= stampsRequired) {
       client.cards[restoId].stamps = 0; 
-      resto.rewardsGiven = (resto.rewardsGiven || 0) + 1;
+      await updateRestaurant(restoId, { rewardsGiven: (resto.rewardsGiven || 0) + 1 });
       sessionStorage.setItem('rewardUnlocked', restoId);
       await playNotification(`Félicitations ! Vous avez débloqué: ${resto.loyaltyReward}`);
     } else {
@@ -133,8 +132,7 @@ export default function ScanPage() {
 
     await saveClient(client.id, client);
     
-    resto.stampsGiven = (resto.stampsGiven || 0) + 1;
-    await saveRestaurant(restoId, resto);
+    await updateRestaurant(restoId, { stampsGiven: (resto.stampsGiven || 0) + 1 });
     
     toast({ title: "Succès!", description: `Tampon ajouté chez ${resto.name}!` });
   };
