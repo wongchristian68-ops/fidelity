@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Restaurant": {
@@ -6,37 +7,21 @@
       "type": "object",
       "description": "Represents a restaurant and its loyalty program configuration.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Restaurant entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the restaurant."
-        },
-        "reward": {
-          "type": "string",
-          "description": "The reward offered to customers after reaching a certain number of stamps."
-        },
-        "googleLink": {
-          "type": "string",
-          "description": "The Google Maps link for the restaurant's location.",
-          "format": "uri"
-        },
-        "stampsGiven": {
-          "type": "number",
-          "description": "The total number of stamps given out by the restaurant."
-        },
-        "referralsCount": {
-          "type": "number",
-          "description": "The number of successful referrals attributed to this restaurant."
-        }
+        "id": { "type": "string", "description": "Unique identifier for the Restaurant entity (matches Firebase Auth UID)." },
+        "name": { "type": "string", "description": "The name of the restaurant." },
+        "email": { "type": "string", "description": "The contact email for the restaurant, used for login.", "format": "email" },
+        "loyaltyReward": { "type": "string", "description": "The reward for completing a loyalty card." },
+        "stampsRequiredForReward": { "type": "number", "description": "Number of stamps needed to get the loyalty reward." },
+        "referralReward": { "type": "string", "description": "The reward offered to a referrer when their code is used." },
+        "googleLink": { "type": "string", "description": "The Google Maps link for the restaurant's location for leaving reviews.", "format": "uri" },
+        "stampsGiven": { "type": "number", "description": "The total number of stamps given out by the restaurant." },
+        "rewardsGiven": { "type": "number", "description": "The total number of loyalty rewards given out." },
+        "referralsCount": { "type": "number", "description": "The number of successful referrals attributed to this restaurant." },
+        "qrCodeValue": { "type": ["string", "null"], "description": "The current value of the active QR code for giving stamps." },
+        "qrCodeExpiry": { "type": ["number", "null"], "description": "The timestamp when the current QR code expires." },
+        "cardImageUrl": { "type": "string", "description": "URL for the loyalty card's background image.", "format": "uri" }
       },
-      "required": [
-        "id",
-        "name",
-        "reward"
-      ]
+      "required": ["id", "name", "email", "loyaltyReward", "stampsRequiredForReward", "referralReward"]
     },
     "Client": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -44,33 +29,56 @@
       "type": "object",
       "description": "Represents a customer and their loyalty card information.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Client entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the client."
-        },
+        "id": { "type": "string", "description": "Unique identifier for the Client entity (matches Firebase Auth UID)." },
+        "name": { "type": "string", "description": "The name of the client." },
+        "phone": { "type": "string", "description": "The client's phone number." },
         "cards": {
-          "type": "string",
-          "description": "card identifier",
-          "format": "uri"
+          "type": "object",
+          "description": "A map of loyalty cards the client has, keyed by restaurant ID.",
+          "additionalProperties": { "$ref": "#/entities/ClientCard" }
         },
-        "referralCode": {
-          "type": "string",
-          "description": "The unique referral code assigned to the client."
-        },
-        "referrer": {
-          "type": "string",
-          "description": "The referral code of the client who referred this client. (Relationship: Client 1:N Client (self-referential))"
+        "pendingReferralRewards": {
+          "type": "array",
+          "description": "A list of referral rewards the client has earned but not yet claimed.",
+          "items": { "$ref": "#/entities/PendingReferralReward" }
         }
       },
-      "required": [
-        "id",
-        "name",
-        "referralCode"
-      ]
+      "required": ["id", "name", "phone", "cards"]
+    },
+    "ClientCard": {
+      "title": "ClientCard",
+      "type": "object",
+      "description": "Represents a single loyalty card for a client at a specific restaurant.",
+      "properties": {
+        "stamps": { "type": "number", "description": "Number of stamps collected." },
+        "referralCode": { "type": "string", "description": "The unique referral code for this client at this restaurant." },
+        "scannedCodes": { "type": "array", "items": { "type": "string" }, "description": "List of QR code values already scanned to prevent reuse." },
+        "referrerInfo": {
+          "type": ["object", "null"],
+          "description": "Information about the client who referred this one for this specific card.",
+          "properties": {
+            "code": { "type": "string", "description": "The referral code that was used." },
+            "reward": { "type": "string", "description": "The reward promised for this referral." },
+            "isActivated": { "type": "boolean", "description": "Whether the referral has been activated (e.g., on first stamp)." },
+            "referrerId": { "type": "string", "description": "The ID of the client who referred this one." },
+            "referrerName": { "type": "string", "description": "The name of the client who referred this one." }
+          },
+          "required": ["code", "reward", "isActivated", "referrerId", "referrerName"]
+        }
+      },
+      "required": ["stamps", "referralCode"]
+    },
+    "PendingReferralReward": {
+        "title": "PendingReferralReward",
+        "type": "object",
+        "description": "Represents a referral reward that a client has earned.",
+        "properties": {
+            "id": { "type": "string", "description": "Unique ID for the pending reward." },
+            "restoId": { "type": "string", "description": "The ID of the restaurant where the reward can be claimed." },
+            "reward": { "type": "string", "description": "The description of the reward." },
+            "referredClientName": { "type": "string", "description": "Name of the client who used the referral code." }
+        },
+        "required": ["id", "restoId", "reward", "referredClientName"]
     }
   },
   "auth": {
@@ -85,15 +93,10 @@
         "path": "/restaurants/{restaurantId}",
         "definition": {
           "entityName": "Restaurant",
-          "schema": {
-            "$ref": "#/backend/entities/Restaurant"
-          },
-          "description": "Stores restaurant profiles and loyalty program configurations. Includes denormalized 'restaurantId' (from the path) to simplify security rules.",
+          "schema": { "$ref": "#/entities/Restaurant" },
+          "description": "Stores restaurant profiles and loyalty program configurations.",
           "params": [
-            {
-              "name": "restaurantId",
-              "description": "Unique identifier for the restaurant, derived from the restaurant name."
-            }
+            { "name": "restaurantId", "description": "Unique identifier for the restaurant, matches Auth UID." }
           ]
         }
       },
@@ -101,19 +104,13 @@
         "path": "/clients/{clientId}",
         "definition": {
           "entityName": "Client",
-          "schema": {
-            "$ref": "#/backend/entities/Client"
-          },
-          "description": "Stores client profiles and loyalty card information. Includes denormalized 'clientId' (from the path) to simplify security rules.",
+          "schema": { "$ref": "#/entities/Client" },
+          "description": "Stores client profiles and loyalty card information.",
           "params": [
-            {
-              "name": "clientId",
-              "description": "Unique identifier for the client, derived from the client's name."
-            }
+            { "name": "clientId", "description": "Unique identifier for the client, matches Auth UID." }
           ]
         }
       }
-    ],
-    "reasoning": "The Firestore structure is designed to support the StampJoy application's loyalty program features, focusing on restaurants and clients. It emphasizes authorization independence through denormalization and structural segregation for simplified security rules and efficient data access. Since the application uses authentication (password and anonymous), the structure has been made accordingly.\n\nRestaurants:\nRestaurants are stored in the `/restaurants/{restaurantId}` collection. This structure allows easy lookup of restaurant details by ID and supports the restaurant login feature. Each restaurant document stores its configuration (reward, Google Maps link) and statistics. The `restaurantId` also encodes the restaurant name, making it easy to identify.\n\nClients:\nClients are stored in the `/clients/{clientId}` collection. Each client document contains the client's name, referral code, referrer, and a map of loyalty cards (`cards`). The `cards` map stores the number of stamps the client has at each restaurant, supporting the loyalty points tracking feature.\n\nAuthorization Independence and Denormalization:\nAuthorization independence is achieved by storing all necessary authorization information directly within the documents that require it. For instance, a client's card information (stamps) is stored directly within the client's document. This eliminates the need for `get()` calls in security rules to check parent document attributes. For example, if access to a card required checking the restaurant, the restaurant name is already included in the card.\n\nQAPs (Rules are not Filters):\nThe structure supports secure `list` operations (QAPs) by segregating data based on access requirements. Restaurants can only access their own data via path-based rules. Clients can only access their own data via path-based rules. Listing operations are performed on collections that contain only documents that the user is authorized to view.  The structure avoids mixing public and private data in the same collection, ensuring that rules can be written to allow listing without exposing unauthorized information. The membership map in the `clients` and soon `/restaurants/{restaurantId}/employees` also support QAPs for collaborative data."
+    ]
   }
 }

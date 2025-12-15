@@ -3,31 +3,35 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { UtensilsIcon } from '@/components/icons/utensils-icon';
-import { getClient, getRestaurant, saveRestaurant, getClients, saveClient, getRestaurants } from '@/lib/db';
+import { saveRestaurant, saveClient, getClient } from '@/lib/db';
 import type { Client, Restaurant } from '@/lib/types';
-import { v4 as uuidv4 } from 'uuid';
 import { placeholderImages } from '@/lib/placeholder-images.json';
 import { useAuth } from '@/firebase/provider';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { 
+  sendPasswordResetEmail,
+  fetchSignInMethodsForEmail,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInAnonymously
+} from 'firebase/auth';
 
 export default function AuthPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
   const [restoEmail, setRestoEmail] = useState('');
   const [restoPassword, setRestoPassword] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const bgImage = placeholderImages[0];
 
 
-  const handleRestoLogin = () => {
+  const handleRestoLogin = async () => {
     const email = restoEmail.trim().toLowerCase();
     const password = restoPassword.trim();
 
@@ -35,43 +39,53 @@ export default function AuthPage() {
       toast({ title: 'Erreur', description: 'Veuillez remplir tous les champs.', variant: 'destructive' });
       return;
     }
-
     if (password.length < 6) {
-      toast({ title: 'Erreur', description: 'Le mot de passe doit comporter au moins 6 caractères.', variant: 'destructive' });
-      return;
+        toast({ title: 'Mot de passe trop court', description: 'Le mot de passe doit faire au moins 6 caractères.', variant: 'destructive' });
+        return;
     }
-    
-    // As we don't have Firebase Auth, we'll simulate the logic.
-    // In a real scenario, this would call Firebase Auth methods.
-    let restaurants = Object.values(getRestaurants());
-    let restaurant = restaurants.find(r => r.email === email);
-    
-    if (restaurant) {
-      // Login - we can't check password, so we just log in
-      sessionStorage.setItem('session', JSON.stringify({ id: restaurant.id, role: 'resto', name: restaurant.name }));
-      router.push('/restaurant');
-    } else {
-      // Register
-      const restaurantNameFromEmail = email.split('@')[0];
-      const id = 'resto_' + uuidv4();
-      
-      const newRestaurant: Restaurant = {
-        id,
-        name: restaurantNameFromEmail,
-        email: email,
-        loyaltyReward: 'Surprise du Chef',
-        stampsRequiredForReward: 10,
-        referralReward: 'Boisson offerte',
-        googleLink: '',
-        stampsGiven: 0,
-        referralsCount: 0,
-        rewardsGiven: 0,
-        qrCodeValue: null,
-        qrCodeExpiry: null,
-      };
-      saveRestaurant(id, newRestaurant);
-      sessionStorage.setItem('session', JSON.stringify({ id: newRestaurant.id, role: 'resto', name: newRestaurant.name }));
-      router.push('/restaurant');
+
+    setIsLoading(true);
+    try {
+        const methods = await fetchSignInMethodsForEmail(auth, email);
+        
+        if (methods.length > 0) {
+            // User exists, sign in
+            await signInWithEmailAndPassword(auth, email, password);
+            // AuthRedirect will handle navigation
+        } else {
+            // User doesn't exist, register
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            
+            const restaurantNameFromEmail = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+            const newRestaurant: Restaurant = {
+                id: user.uid,
+                name: restaurantNameFromEmail,
+                email: email,
+                loyaltyReward: 'Surprise du Chef',
+                stampsRequiredForReward: 10,
+                referralReward: 'Boisson offerte',
+                googleLink: '',
+                stampsGiven: 0,
+                referralsCount: 0,
+                rewardsGiven: 0,
+                qrCodeValue: null,
+                qrCodeExpiry: null,
+            };
+            await saveRestaurant(user.uid, newRestaurant);
+            // AuthRedirect will handle navigation
+        }
+    } catch (error: any) {
+        let description = "Une erreur est survenue.";
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            description = "L'adresse e-mail ou le mot de passe est incorrect.";
+        } else if (error.code === 'auth/email-already-in-use') {
+            description = "Cette adresse e-mail est déjà utilisée. Essayez de vous connecter.";
+        }
+        toast({ title: 'Erreur de connexion', description, variant: 'destructive' });
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -82,6 +96,7 @@ export default function AuthPage() {
       return;
     }
 
+    setIsLoading(true);
     sendPasswordResetEmail(auth, email)
       .then(() => {
         toast({ title: "E-mail de réinitialisation envoyé", description: "Veuillez consulter votre boîte de réception pour réinitialiser votre mot de passe." });
@@ -92,10 +107,11 @@ export default function AuthPage() {
             description = "Aucun compte n'est associé à cette adresse e-mail.";
         }
         toast({ title: "Erreur", description, variant: "destructive" });
-      });
+      })
+      .finally(() => setIsLoading(false));
   };
 
-  const handleClientLogin = () => {
+  const handleClientLogin = async () => {
     const name = clientName.trim();
     const phone = clientPhone.trim();
 
@@ -104,27 +120,37 @@ export default function AuthPage() {
       return;
     }
     
-    let client = Object.values(getClients()).find(c => c.phone === phone);
+    setIsLoading(true);
+    try {
+      const userCredential = await signInAnonymously(auth);
+      const user = userCredential.user;
 
-    if (client) {
-      // Login
-      if(client.name !== name) {
-        toast({ title: 'Erreur', description: 'Ce numéro est déjà associé à un autre prénom.', variant: 'destructive' });
-        return;
+      let client = await getClient(user.uid);
+
+      if (client) {
+        // Client already exists, update their info if changed
+        if(client.name !== name || client.phone !== phone) {
+            client.name = name;
+            client.phone = phone;
+            await saveClient(user.uid, client);
+        }
+      } else {
+        // New client, create a profile
+        const newClient: Client = {
+          id: user.uid,
+          name,
+          phone,
+          cards: {},
+        };
+        await saveClient(user.uid, newClient);
       }
-    } else {
-      // Register
-      const id = 'client_' + Date.now();
-      client = {
-        id,
-        name,
-        phone,
-        cards: {},
-      };
-      saveClient(id, client);
+      // AuthRedirect will handle navigation to /client
+    } catch(error) {
+        console.error("Client anonymous login failed", error);
+        toast({ title: 'Erreur de connexion', description: "Impossible de se connecter. Veuillez réessayer.", variant: 'destructive' });
+    } finally {
+        setIsLoading(false);
     }
-    sessionStorage.setItem('session', JSON.stringify({ id: client.id, role: 'client', name }));
-    router.push('/client');
   };
 
   return (
@@ -159,6 +185,7 @@ export default function AuthPage() {
                 value={restoEmail}
                 onChange={(e) => setRestoEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
+                disabled={isLoading}
               />
               <Input 
                 id="auth-resto-password" 
@@ -167,12 +194,13 @@ export default function AuthPage() {
                 value={restoPassword}
                 onChange={(e) => setRestoPassword(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleRestoLogin()}
+                disabled={isLoading}
               />
-              <Button onClick={handleRestoLogin} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end hover:opacity-90 transition-opacity">
-                Gérer mon Restaurant
+              <Button onClick={handleRestoLogin} className="w-full font-semibold bg-gradient-to-br from-primary to-primary-gradient-end hover:opacity-90 transition-opacity" disabled={isLoading}>
+                {isLoading ? "Chargement..." : "Gérer mon Restaurant"}
               </Button>
               <div className="text-center">
-                <Button variant="link" className="text-xs text-gray-500 h-auto p-0" onClick={handlePasswordReset}>
+                <Button variant="link" className="text-xs text-gray-500 h-auto p-0" onClick={handlePasswordReset} disabled={isLoading}>
                   Mot de passe oublié ?
                 </Button>
               </div>
@@ -199,6 +227,7 @@ export default function AuthPage() {
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleClientLogin()}
+                disabled={isLoading}
               />
               <Input 
                 id="auth-client-phone" 
@@ -207,9 +236,10 @@ export default function AuthPage() {
                 value={clientPhone}
                 onChange={(e) => setClientPhone(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleClientLogin()}
+                disabled={isLoading}
               />
-              <Button onClick={handleClientLogin} variant="secondary" className="w-full font-semibold bg-gray-800 text-white hover:bg-gray-700">
-                Accéder à mes cartes
+              <Button onClick={handleClientLogin} variant="secondary" className="w-full font-semibold bg-gray-800 text-white hover:bg-gray-700" disabled={isLoading}>
+                {isLoading ? "Chargement..." : "Accéder à mes cartes"}
               </Button>
             </CardContent>
           </Card>

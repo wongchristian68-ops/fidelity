@@ -29,33 +29,40 @@ export default function CardsPage() {
   const [client, setClient] = useState<Client | null>(null);
   const [restaurants, setRestaurants] = useState<{ [id: string]: Restaurant }>({});
   const [rewardRestaurant, setRewardRestaurant] = useState<Restaurant | null>(null);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const router = useRouter();
   const { toast, dismiss } = useToast();
 
   useEffect(() => {
     if (session) {
-      const currentClient = getClient(session.id);
-      setClient(currentClient);
-      setRestaurants(getRestaurants());
+      const fetchData = async () => {
+        setIsDataLoading(true);
+        const [clientData, restaurantsData] = await Promise.all([
+          getClient(session.id),
+          getRestaurants(),
+        ]);
 
-      const rewardRestoId = sessionStorage.getItem('rewardUnlocked');
-      if (rewardRestoId) {
-        const resto = getRestaurants()[rewardRestoId];
-        if (resto) {
-          setRewardRestaurant(resto);
+        setClient(clientData);
+        setRestaurants(restaurantsData);
+        setIsDataLoading(false);
+
+        const rewardRestoId = sessionStorage.getItem('rewardUnlocked');
+        if (rewardRestoId && restaurantsData[rewardRestoId]) {
+          setRewardRestaurant(restaurantsData[rewardRestoId]);
           sessionStorage.removeItem('rewardUnlocked');
         }
-      }
+      };
+      fetchData();
     }
   }, [session]);
   
-  const removeReward = (rewardId: string) => {
+  const removeReward = async (rewardId: string) => {
     if (!client) return;
     const updatedClient = {
       ...client,
       pendingReferralRewards: client.pendingReferralRewards?.filter(r => r.id !== rewardId)
     };
-    saveClient(client.id, updatedClient);
+    await saveClient(client.id, updatedClient);
     setClient(updatedClient);
   };
 
@@ -99,23 +106,23 @@ export default function CardsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, restaurants]);
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (!client) return;
-    deleteClient(client.id);
+    await deleteClient(client.id);
     logout();
   };
   
-  if (isLoading || !client) {
+  if (isLoading || isDataLoading) {
     return <div className="p-4 text-center">Chargement...</div>;
   }
   
-  const cardIds = Object.keys(client.cards);
+  const cardIds = client ? Object.keys(client.cards) : [];
 
-  const handleModalClose = () => {
+  const handleModalClose = async () => {
     setRewardRestaurant(null);
-    // Force a re-fetch of client data to show reset card
     if (client) {
-      setClient(getClient(client.id));
+      const updatedClient = await getClient(client.id);
+      setClient(updatedClient);
     }
   };
   
@@ -124,7 +131,7 @@ export default function CardsPage() {
       <header className="bg-white p-6 pb-4 shadow-sm sticky top-0 z-10">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold font-headline">Bonjour, {client.name}</h2>
+            <h2 className="text-xl font-bold font-headline">Bonjour, {session?.name}</h2>
           </div>
           <Button variant="ghost" size="icon" onClick={logout} className="text-gray-500 hover:text-red-500">
             <LogOut className="w-5 h-5" />
@@ -142,7 +149,7 @@ export default function CardsPage() {
             </Button>
           </div>
         ) : (
-          <CardCarousel cards={client.cards} restaurants={restaurants} />
+          <CardCarousel cards={client!.cards} restaurants={restaurants} />
         )}
       </main>
 

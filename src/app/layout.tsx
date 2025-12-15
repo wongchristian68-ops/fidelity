@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { cn } from "@/lib/utils";
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { AuthRedirect } from '@/components/auth-redirect';
 
 export const metadata: Metadata = {
   title: 'Fidélité & Partage',
@@ -28,10 +29,12 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased min-h-screen bg-background")}>
         <FirebaseClientProvider>
-          <main className="max-w-md mx-auto bg-background min-h-screen">
-            {children}
-          </main>
-          <Toaster />
+          <AuthRedirect>
+            <main className="max-w-md mx-auto bg-background min-h-screen">
+              {children}
+            </main>
+            <Toaster />
+          </AuthRedirect>
         </FirebaseClientProvider>
       </body>
     </html>

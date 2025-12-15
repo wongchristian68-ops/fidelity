@@ -1,79 +1,111 @@
+
+import {
+  getFirestore,
+  doc,
+  collection,
+  getDoc,
+  getDocs,
+  setDoc,
+  deleteDoc,
+  writeBatch,
+  query,
+  limit,
+  orderBy,
+  updateDoc,
+  deleteField,
+} from 'firebase/firestore';
 import type { Restaurant, Client, Review } from './types';
 
 const isClient = typeof window !== 'undefined';
 
-// --- Generic DB Functions ---
-function get<T>(key: string): T | null {
-  if (!isClient) return null;
-  return JSON.parse(localStorage.getItem(key) || 'null');
-}
-
-function set<T>(key: string, value: T): void {
-  if (!isClient) return;
-  localStorage.setItem(key, JSON.stringify(value));
+function getDb() {
+  if (!isClient) {
+    throw new Error("Firestore can only be accessed on the client.");
+  }
+  return getFirestore();
 }
 
 // --- Restaurants ---
-export function getRestaurants(): { [id: string]: Restaurant } {
-  return get<{ [id: string]: Restaurant }>('restaurants') || {};
-}
-
-export function getRestaurant(id: string): Restaurant | null {
-  const restaurants = getRestaurants();
-  return restaurants[id] || null;
-}
-
-export function saveRestaurant(id: string, data: Restaurant): void {
-  const restaurants = getRestaurants();
-  restaurants[id] = data;
-  set('restaurants', restaurants);
-}
-
-export function deleteRestaurant(id: string): void {
-  const restaurants = getRestaurants();
-  delete restaurants[id];
-  set('restaurants', restaurants);
-
-  // Also remove restaurant cards from all clients
-  const clients = getClients();
-  Object.keys(clients).forEach(clientId => {
-    if (clients[clientId].cards[id]) {
-      delete clients[clientId].cards[id];
-    }
+export async function getRestaurants(): Promise<{ [id: string]: Restaurant }> {
+  const db = getDb();
+  const snapshot = await getDocs(collection(db, 'restaurants'));
+  const restaurants: { [id: string]: Restaurant } = {};
+  snapshot.forEach((doc) => {
+    restaurants[doc.id] = doc.data() as Restaurant;
   });
-  set('clients', clients);
+  return restaurants;
 }
 
-export function resetRestaurantStats(id: string): void {
-  const restaurant = getRestaurant(id);
-  if (restaurant) {
-    restaurant.stampsGiven = 0;
-    restaurant.referralsCount = 0;
-    restaurant.rewardsGiven = 0;
-    saveRestaurant(id, restaurant);
-  }
+export async function getRestaurant(id: string): Promise<Restaurant | null> {
+  const db = getDb();
+  const docRef = doc(db, 'restaurants', id);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? (docSnap.data() as Restaurant) : null;
+}
+
+export async function saveRestaurant(id: string, data: Restaurant): Promise<void> {
+  const db = getDb();
+  const docRef = doc(db, 'restaurants', id);
+  await setDoc(docRef, data, { merge: true });
+}
+
+export async function deleteRestaurant(id: string): Promise<void> {
+  const db = getDb();
+  const batch = writeBatch(db);
+
+  // Delete the restaurant document
+  const restaurantRef = doc(db, 'restaurants', id);
+  batch.delete(restaurantRef);
+
+  // Remove restaurant cards from all clients
+  const clientsSnapshot = await getDocs(collection(db, 'clients'));
+  clientsSnapshot.forEach((clientDoc) => {
+    const clientRef = doc(db, 'clients', clientDoc.id);
+    batch.update(clientRef, {
+      [`cards.${id}`]: deleteField(),
+    });
+  });
+
+  await batch.commit();
+}
+
+export async function resetRestaurantStats(id: string): Promise<void> {
+    const db = getDb();
+    const docRef = doc(db, 'restaurants', id);
+    await updateDoc(docRef, {
+        stampsGiven: 0,
+        referralsCount: 0,
+        rewardsGiven: 0,
+    });
 }
 
 // --- Clients ---
-export function getClients(): { [id: string]: Client } {
-  return get<{ [id: string]: Client }>('clients') || {};
+export async function getClients(): Promise<{ [id: string]: Client }> {
+  const db = getDb();
+  const snapshot = await getDocs(collection(db, 'clients'));
+  const clients: { [id: string]: Client } = {};
+  snapshot.forEach((doc) => {
+    clients[doc.id] = doc.data() as Client;
+  });
+  return clients;
 }
 
-export function getClient(id: string): Client | null {
-  const clients = getClients();
-  return clients[id] || null;
+export async function getClient(id: string): Promise<Client | null> {
+  const db = getDb();
+  const docRef = doc(db, 'clients', id);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? (docSnap.data() as Client) : null;
 }
 
-export function saveClient(id: string, data: Client): void {
-  const clients = getClients();
-  clients[id] = data;
-  set('clients', clients);
+export async function saveClient(id: string, data: Client): Promise<void> {
+  const db = getDb();
+  const docRef = doc(db, 'clients', id);
+  await setDoc(docRef, data, { merge: true });
 }
 
-export function deleteClient(id: string): void {
-  const clients = getClients();
-  delete clients[id];
-  set('clients', clients);
+export async function deleteClient(id: string): Promise<void> {
+  const db = getDb();
+  await deleteDoc(doc(db, 'clients', id));
 }
 
 // --- Reviews (Simulated) ---
@@ -87,16 +119,40 @@ const FAKE_REVIEWS: { [restoId: string]: Review[] } = {
 };
 
 export function getRecentReviews(restoId: string): Review[] {
-  return FAKE_REVIEWS[restoId] || [];
+    const reviews = get<Review[]>('reviews') || [];
+    const restoReviews = FAKE_REVIEWS[restoId] || [];
+    const savedResponses = reviews.filter(r => r.id.startsWith(restoId));
+    
+    return restoReviews.map(rr => {
+        const saved = savedResponses.find(sr => sr.id === `${restoId}_${rr.id}`);
+        return saved ? {...rr, aiResponse: saved.aiResponse} : rr;
+    });
 }
 
 export function saveReviewResponse(restoId: string, reviewId: string, response: string): void {
   // This is a mock save. In a real app, this would update a database.
-  if (FAKE_REVIEWS[restoId]) {
-    const reviewIndex = FAKE_REVIEWS[restoId].findIndex(r => r.id === reviewId);
+  // We'll use localStorage to persist the response for the demo
+   const reviews = get<Review[]>('reviews') || [];
+   const reviewIndex = reviews.findIndex(r => r.id === `${restoId}_${reviewId}`);
     if (reviewIndex !== -1) {
-      FAKE_REVIEWS[restoId][reviewIndex].aiResponse = response;
-      console.log(`Saved response for review ${reviewId}`);
+        reviews[reviewIndex].aiResponse = response;
+    } else {
+        const originalReview = FAKE_REVIEWS[restoId]?.find(r => r.id === reviewId);
+        if (originalReview) {
+            reviews.push({ ...originalReview, id: `${restoId}_${reviewId}`, aiResponse: response });
+        }
     }
-  }
+    set('reviews', reviews);
+}
+
+
+// --- Generic DB Functions (localStorage for non-Firestore data) ---
+function get<T>(key: string): T | null {
+  if (!isClient) return null;
+  return JSON.parse(localStorage.getItem(key) || 'null');
+}
+
+function set<T>(key: string, value: T): void {
+  if (!isClient) return;
+  localStorage.setItem(key, JSON.stringify(value));
 }

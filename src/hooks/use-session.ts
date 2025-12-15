@@ -1,31 +1,98 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import type { Session } from '@/lib/types';
-import { useRouter } from 'next/navigation';
+import { useUser } from '@/firebase';
+import { getClient, getRestaurant } from '@/lib/db';
+import type { Session, Client, Restaurant } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { signOut } from 'firebase/auth';
+import { useAuth } from '@/firebase/provider';
 
+// This custom hook now wraps the Firebase `useUser` hook
+// and fetches the user's profile from Firestore.
 export function useSession() {
+  const { user, isUserLoading: isAuthLoading, userError } = useUser();
+  const auth = useAuth();
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const sessionData = sessionStorage.getItem('session');
-    if (sessionData) {
-      setSession(JSON.parse(sessionData));
-    } else {
-      // If no session, redirect to login page.
-      // This protects routes.
-      router.replace('/');
+    if (isAuthLoading) {
+      setIsLoading(true);
+      return;
     }
-    setIsLoading(false);
-  }, [router]);
+    if (userError) {
+      setError(userError);
+      setIsLoading(false);
+      setSession(null);
+      return;
+    }
+    if (!user) {
+      // User is not authenticated
+      setSession(null);
+      setIsLoading(false);
+      return;
+    }
+    
+    const fetchProfile = async () => {
+      setIsLoading(true);
+      try {
+        let profile: Client | Restaurant | null = null;
+        let role: 'client' | 'resto' | null = null;
 
-  const logout = () => {
-    sessionStorage.removeItem('session');
-    setSession(null);
-    router.push('/');
-  }
+        // Check if it's a restaurant user (they log in with email)
+        if (user.email) {
+          profile = await getRestaurant(user.uid);
+          role = 'resto';
+        } else if (user.isAnonymous) {
+          // Check if it's a client (anonymous auth)
+          profile = await getClient(user.uid);
+          role = 'client';
+        }
 
-  return { session, isLoading, logout };
+        if (profile && role) {
+          setSession({
+            id: user.uid,
+            name: profile.name,
+            role: role,
+          });
+        } else {
+            // This can happen if the profile document hasn't been created yet.
+            // For anonymous users, we create one on the fly.
+            if(user.isAnonymous && !profile) {
+                const newClient: Client = {
+                    id: user.uid,
+                    name: 'Nouveau Client', // Placeholder name
+                    phone: '', // Phone is handled on the login page now
+                    cards: {},
+                };
+                await saveClient(user.uid, newClient);
+                setSession({ id: user.uid, name: newClient.name, role: 'client'});
+            } else {
+                 setSession(null);
+            }
+        }
+      } catch (e: any) {
+        console.error("Error fetching user profile:", e);
+        setError(e);
+        setSession(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [user, isAuthLoading, userError]);
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setSession(null);
+      // AuthRedirect component will handle navigation to '/'
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
+  return { session, isLoading, logout, error };
 }

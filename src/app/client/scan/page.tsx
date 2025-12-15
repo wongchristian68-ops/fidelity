@@ -6,9 +6,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import QrScanner from '@/components/client/qr-scanner';
 import type { Client, Restaurant, StampQrCode, ClientCard } from '@/lib/types';
-import { getClient, getRestaurant, saveClient, saveRestaurant, getClients } from '@/lib/db';
+import { getClient, getRestaurant, saveClient, saveRestaurant } from '@/lib/db';
 import { useSession } from '@/hooks/use-session';
-// import { textToSpeech } from '../actions';
+import { textToSpeech } from '../actions';
 import { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -16,27 +16,27 @@ export default function ScanPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { session } = useSession();
-  // const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  // const audioRef = useRef<HTMLAudioElement>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // useEffect(() => {
-  //   if (audioUrl && audioRef.current) {
-  //     audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
-  //   }
-  // }, [audioUrl]);
+  useEffect(() => {
+    if (audioUrl && audioRef.current) {
+      audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
+    }
+  }, [audioUrl]);
 
   const playNotification = async (text: string) => {
-    // try {
-    //   const audioDataUri = await textToSpeech(text);
-    //   setAudioUrl(audioDataUri);
-    // } catch (e) {
-    //   console.error("Audio notification failed", e);
-    // }
-    console.log(`Audio notification (désactivée): ${text}`);
+    try {
+       const audioDataUri = await textToSpeech(text);
+       setAudioUrl(audioDataUri);
+    } catch (e) {
+       console.error("Audio notification failed", e);
+    }
   }
 
-  const rewardReferrer = (referrerId: string, restoId: string, reward: string, referredClientName: string) => {
-    const referrer = getClient(referrerId);
+  const rewardReferrer = async (referrerId: string, restoId: string, reward: string, referredClientName: string) => {
+    const referrer = await getClient(referrerId);
     if (referrer) {
       if (!referrer.pendingReferralRewards) {
         referrer.pendingReferralRewards = [];
@@ -47,16 +47,17 @@ export default function ScanPage() {
         reward: reward,
         referredClientName: referredClientName,
       });
-      saveClient(referrer.id, referrer);
+      await saveClient(referrer.id, referrer);
     }
   };
 
-  const handleScanSuccess = (decodedText: string) => {
-    if (!session || session.role !== 'client') return;
+  const handleScanSuccess = async (decodedText: string) => {
+    if (isProcessing || !session || session.role !== 'client') return;
+    setIsProcessing(true);
     
     try {
       const data: StampQrCode = JSON.parse(decodedText);
-      const resto = getRestaurant(data.restoId);
+      const resto = await getRestaurant(data.restoId);
 
       if (!resto) {
         toast({ title: "Restaurant Inconnu", variant: "destructive" });
@@ -68,19 +69,21 @@ export default function ScanPage() {
       }
       
       if (data.type === 'stamp' && data.restoId) {
-        addStamp(data.restoId, resto, data.value);
+        await addStamp(data.restoId, resto, data.value);
       } else {
         toast({ title: "Code QR invalide", variant: "destructive" });
       }
     } catch (e) {
       toast({ title: "Code QR illisible", description: "Ce code n'est pas reconnu par StampJoy.", variant: "destructive" });
+    } finally {
+        router.push('/client/cards');
     }
   };
 
-  const addStamp = (restoId: string, resto: Restaurant, qrCodeValue: string) => {
+  const addStamp = async (restoId: string, resto: Restaurant, qrCodeValue: string) => {
     if (!session) return;
     
-    let client = getClient(session.id);
+    let client = await getClient(session.id);
     if (!client) {
       toast({ title: "Erreur", description: "Client non trouvé.", variant: "destructive" });
       return;
@@ -105,7 +108,6 @@ export default function ScanPage() {
 
     if (clientCard.scannedCodes.includes(qrCodeValue)) {
       toast({ title: "QR Code déjà utilisé", description: "Vous avez déjà scanné ce code.", variant: "destructive" });
-      router.push('/client/cards');
       return;
     }
 
@@ -116,7 +118,7 @@ export default function ScanPage() {
     
     // Check for referral reward on first stamp for this card
     if (clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
-        rewardReferrer(clientCard.referrerInfo.referrerId, restoId, clientCard.referrerInfo.reward, client.name);
+        await rewardReferrer(clientCard.referrerInfo.referrerId, restoId, clientCard.referrerInfo.reward, client.name);
         clientCard.referrerInfo.isActivated = true;
         
         toast({
@@ -131,23 +133,21 @@ export default function ScanPage() {
 
 
     if (newStamps >= stampsRequired) {
-      // The reward is claimed, stamps reset
       client.cards[restoId].stamps = 0; 
       resto.rewardsGiven = (resto.rewardsGiven || 0) + 1;
       sessionStorage.setItem('rewardUnlocked', restoId);
-      playNotification(`Félicitations ! Vous avez débloqué: ${resto.loyaltyReward}`);
+      await playNotification(`Félicitations ! Vous avez débloqué: ${resto.loyaltyReward}`);
     } else {
        client.cards[restoId].stamps = newStamps;
-       playNotification(`Tampon ajouté chez ${resto.name}.`);
+       await playNotification(`Tampon ajouté chez ${resto.name}.`);
     }
 
-    saveClient(client.id, client);
+    await saveClient(client.id, client);
     
     resto.stampsGiven = (resto.stampsGiven || 0) + 1;
-    saveRestaurant(restoId, resto);
+    await saveRestaurant(restoId, resto);
     
     toast({ title: "Succès!", description: `Tampon ajouté chez ${resto.name}!` });
-    router.push('/client/cards');
   };
 
   const handleScanError = (errorMessage: string) => {
@@ -167,7 +167,7 @@ export default function ScanPage() {
             />
         </CardContent>
        </Card>
-       {/* {audioUrl && <audio ref={audioRef} src={audioUrl} />} */}
+       {audioUrl && <audio ref={audioRef} src={audioUrl} />}
     </div>
   );
 }

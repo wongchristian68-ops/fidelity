@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QrCodeDisplay } from '@/components/restaurant/qr-code';
 import { QrCodeCountdown } from '@/components/restaurant/qr-code-countdown';
-import { LogOut, Sparkles, Stamp, Users, KeyRound, RefreshCw, AlertTriangle, Upload, Trash2, Gift, Users2, RotateCcw } from 'lucide-react';
+import { LogOut, Sparkles, Stamp, Users, KeyRound, RefreshCw, AlertTriangle, Upload, Trash2, Gift, Users2, RotateCcw, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { aiSuggestReward } from './actions';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,7 +30,7 @@ import { Label } from '@/components/ui/label';
 import { ReviewManager } from '@/components/restaurant/review-manager';
 
 export default function RestaurantPage() {
-  const { session, isLoading, logout } = useSession();
+  const { session, isLoading: isSessionLoading, logout } = useSession();
   const { toast } = useToast();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loyaltyRewardInput, setLoyaltyRewardInput] = useState('');
@@ -41,20 +41,25 @@ export default function RestaurantPage() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeClients, setActiveClients] = useState(0);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
-  const fetchRestaurantData = useCallback(() => {
+  const fetchRestaurantData = useCallback(async () => {
     if (session) {
-      const currentRestaurant = getRestaurant(session.id);
-      setRestaurant(currentRestaurant);
-      setLoyaltyRewardInput(currentRestaurant?.loyaltyReward || '');
-      setStampsRequiredInput(currentRestaurant?.stampsRequiredForReward || 10);
-      setReferralRewardInput(currentRestaurant?.referralReward || '');
-      setGoogleLinkInput(currentRestaurant?.googleLink || '');
-      setCardImageUrlInput(currentRestaurant?.cardImageUrl || null);
+      setIsDataLoading(true);
+      const currentRestaurant = await getRestaurant(session.id);
+      if (currentRestaurant) {
+        setRestaurant(currentRestaurant);
+        setLoyaltyRewardInput(currentRestaurant.loyaltyReward || '');
+        setStampsRequiredInput(currentRestaurant.stampsRequiredForReward || 10);
+        setReferralRewardInput(currentRestaurant.referralReward || '');
+        setGoogleLinkInput(currentRestaurant.googleLink || '');
+        setCardImageUrlInput(currentRestaurant.cardImageUrl || null);
 
-      const allClients = Object.values(getClients());
-      const clientsWithCard = allClients.filter(client => client.cards[session.id]);
-      setActiveClients(clientsWithCard.length);
+        const allClients = Object.values(await getClients());
+        const clientsWithCard = allClients.filter(client => client.cards[session.id]);
+        setActiveClients(clientsWithCard.length);
+      }
+      setIsDataLoading(false);
     }
   }, [session]);
   
@@ -62,9 +67,9 @@ export default function RestaurantPage() {
     fetchRestaurantData();
   }, [fetchRestaurantData]);
 
-  const generateNewQrCode = useCallback(() => {
+  const generateNewQrCode = useCallback(async () => {
     if (session) {
-        let currentRestaurant = getRestaurant(session.id);
+        let currentRestaurant = await getRestaurant(session.id);
         if (currentRestaurant) {
             const newValue = uuidv4();
             const newExpiry = Date.now() + 24 * 60 * 60 * 1000;
@@ -73,7 +78,7 @@ export default function RestaurantPage() {
                 qrCodeValue: newValue,
                 qrCodeExpiry: newExpiry
             };
-            saveRestaurant(currentRestaurant.id, updatedRestaurant);
+            await saveRestaurant(currentRestaurant.id, updatedRestaurant);
             setRestaurant(updatedRestaurant);
             toast({ title: 'Nouveau QR Code généré !', description: 'Ce code est valable 24 heures.' });
         }
@@ -87,7 +92,7 @@ export default function RestaurantPage() {
   }, [restaurant, generateNewQrCode]);
 
 
-  const handleSaveConfig = () => {
+  const handleSaveConfig = async () => {
     if (restaurant) {
       const updatedRestaurant = { 
         ...restaurant, 
@@ -97,7 +102,7 @@ export default function RestaurantPage() {
         googleLink: googleLinkInput,
         cardImageUrl: cardImageUrlInput || '',
       };
-      saveRestaurant(restaurant.id, updatedRestaurant);
+      await saveRestaurant(restaurant.id, updatedRestaurant);
       setRestaurant(updatedRestaurant);
       toast({ title: "Configuration sauvegardée !" });
     }
@@ -132,22 +137,26 @@ export default function RestaurantPage() {
     }
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (!restaurant) return;
-    deleteRestaurant(restaurant.id);
+    await deleteRestaurant(restaurant.id);
     logout();
   };
 
-  const handleResetStats = () => {
+  const handleResetStats = async () => {
     if (!restaurant) return;
-    resetRestaurantStats(restaurant.id);
+    await resetRestaurantStats(restaurant.id);
     fetchRestaurantData();
     toast({ title: "Statistiques réinitialisées", description: "Les compteurs de campagne ont été remis à zéro." });
   };
 
 
-  if (isLoading || !restaurant) {
-    return <div className="p-4 text-center">Chargement...</div>;
+  if (isSessionLoading || isDataLoading || !restaurant) {
+    return (
+        <div className="flex items-center justify-center min-h-screen">
+            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        </div>
+    );
   }
 
   const qrCodeValue = restaurant.qrCodeValue ? JSON.stringify({ type: 'stamp', restoId: restaurant.id, value: restaurant.qrCodeValue }) : '';

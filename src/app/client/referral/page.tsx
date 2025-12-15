@@ -10,21 +10,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { v4 as uuidv4 } from 'uuid';
 
 export default function ReferralPage() {
   const { session, isLoading } = useSession();
   const { toast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
-  const [restaurants, setRestaurants] = useState<{[id: string]: Restaurant}>({});
+  const [allRestaurants, setAllRestaurants] = useState<{[id: string]: Restaurant}>({});
   const [referralCodeInput, setReferralCodeInput] = useState('');
   const [selectedRestoId, setSelectedRestoId] = useState('');
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   useEffect(() => {
     if (session) {
-      const currentClient = getClient(session.id);
-      setClient(currentClient);
-      setRestaurants(getRestaurants());
+      const fetchData = async () => {
+        setIsDataLoading(true);
+        const [clientData, restaurantsData] = await Promise.all([
+          getClient(session.id),
+          getRestaurants(),
+        ]);
+        setClient(clientData);
+        setAllRestaurants(restaurantsData);
+        setIsDataLoading(false);
+      };
+      fetchData();
     }
   }, [session]);
 
@@ -46,11 +54,11 @@ export default function ReferralPage() {
   };
 
 
-  const submitReferralCode = () => {
+  const submitReferralCode = async () => {
     if (!client || !selectedRestoId || !referralCodeInput) return;
     const code = referralCodeInput.trim().toUpperCase();
 
-    const restaurant = getRestaurant(selectedRestoId);
+    const restaurant = await getRestaurant(selectedRestoId);
     if (!restaurant) return;
     
     if (client.cards[selectedRestoId]?.referralCode === code) {
@@ -58,11 +66,11 @@ export default function ReferralPage() {
       return;
     }
     
-    const allClients = getClients();
+    const allClients = await getClients();
     const referrerId = Object.keys(allClients).find(id => allClients[id].cards[selectedRestoId]?.referralCode === code);
 
     if (referrerId) {
-      const referrer = getClient(referrerId);
+      const referrer = await getClient(referrerId);
       if (!referrer) return;
 
       if (isCircularReferral(client.id, referrerId, selectedRestoId, allClients)) {
@@ -87,13 +95,12 @@ export default function ReferralPage() {
         isActivated: false, // This will be set to true on first stamp
       }
       
-      saveClient(client.id, updatedClient);
+      await saveClient(client.id, updatedClient);
       
-      // Update restaurant stats immediately on code validation
-      const resto = getRestaurant(selectedRestoId);
-      if(resto) {
-        resto.referralsCount = (resto.referralsCount || 0) + 1;
-        saveRestaurant(selectedRestoId, resto); 
+      const restoToUpdate = await getRestaurant(selectedRestoId);
+      if(restoToUpdate) {
+        restoToUpdate.referralsCount = (restoToUpdate.referralsCount || 0) + 1;
+        await saveRestaurant(selectedRestoId, restoToUpdate); 
       }
 
       setClient(updatedClient);
@@ -105,13 +112,13 @@ export default function ReferralPage() {
     }
   };
 
-  if (isLoading || !client) {
+  if (isLoading || isDataLoading) {
     return <div className="p-4 text-center">Chargement...</div>;
   }
   
   // Restaurants where client has a card but no referrer yet
-  const restaurantsAvailableForReferral = Object.values(getRestaurants())
-      .filter(resto => !client.cards[resto.id]?.referrerInfo);
+  const restaurantsAvailableForReferral = Object.values(allRestaurants)
+      .filter(resto => !client?.cards[resto.id]?.referrerInfo);
 
 
   const hasCards = client && Object.keys(client.cards).length > 0;
@@ -174,12 +181,12 @@ export default function ReferralPage() {
               Valider
             </Button>
           </div>
-          {Object.keys(client.cards).map(restoId => {
-            const card = client.cards[restoId];
+          {client && Object.keys(client.cards).map(restoId => {
+            const card = client!.cards[restoId];
             if (card.referrerInfo) {
               return (
                 <p key={restoId} className="text-sm text-green-700 bg-green-100 p-3 rounded-lg">
-                  Parrainage de {card.referrerInfo.referrerName} activé pour {restaurants[restoId]?.name} ! Vous recevrez votre récompense lors de votre prochain tampon.
+                  Parrainage de {card.referrerInfo.referrerName} activé pour {allRestaurants[restoId]?.name} ! Vous recevrez votre récompense lors de votre prochain tampon.
                 </p>
               )
             }
