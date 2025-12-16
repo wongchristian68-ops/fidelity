@@ -21,17 +21,18 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ToastAction } from "@/components/ui/toast";
 import { CardCarousel } from "@/components/client/card-carousel";
+import { ReferralRewardModal } from "@/components/modals/referral-reward-modal";
 
 export default function CardsPage() {
   const { session, isLoading, logout } = useSession();
   const [client, setClient] = useState<Client | null>(null);
   const [restaurants, setRestaurants] = useState<{ [id: string]: Restaurant }>({});
   const [rewardRestaurant, setRewardRestaurant] = useState<Restaurant | null>(null);
+  const [pendingReward, setPendingReward] = useState<any>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
   const router = useRouter();
-  const { toast, dismiss } = useToast();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (session) {
@@ -44,6 +45,15 @@ export default function CardsPage() {
 
         setClient(clientData);
         setRestaurants(restaurantsData);
+        
+        if (clientData?.pendingReferralRewards && clientData.pendingReferralRewards.length > 0) {
+          const reward = clientData.pendingReferralRewards[0];
+          const resto = restaurantsData[reward.restoId];
+          if (resto) {
+            setPendingReward({ ...reward, restaurant: resto });
+          }
+        }
+        
         setIsDataLoading(false);
 
         const rewardRestoId = sessionStorage.getItem('rewardUnlocked');
@@ -64,47 +74,8 @@ export default function CardsPage() {
     };
     await saveClient(client.id, updatedClient);
     setClient(updatedClient);
+    setPendingReward(null);
   };
-
-  useEffect(() => {
-    if (client?.pendingReferralRewards && client.pendingReferralRewards.length > 0) {
-      const reward = client.pendingReferralRewards[0];
-      const resto = restaurants[reward.restoId];
-
-      if (!resto) return;
-
-      const handleUse = () => {
-        toast({
-          title: "Récompense utilisée",
-          description: `Montrez ce message chez ${resto.name} pour recevoir: ${reward.reward}`,
-        });
-        removeReward(reward.id);
-        dismiss(); // Dismiss the original toast
-      };
-
-      const handleDismiss = () => {
-        removeReward(reward.id);
-        dismiss(); // Dismiss the original toast
-      };
-      
-      toast({
-        title: `Nouveau bonus de parrainage !`,
-        description: `Félicitations ! ${reward.referredClientName} a utilisé votre code chez ${resto.name}. Vous avez gagné: "${reward.reward}".`,
-        duration: Infinity,
-        action: (
-          <div className="flex flex-col gap-2 w-full mt-2">
-            <ToastAction altText="Utiliser" onClick={handleUse} className="w-full justify-center">
-              Utiliser
-            </ToastAction>
-            <ToastAction altText="Ignorer" onClick={handleDismiss} className="w-full bg-transparent text-gray-500 hover:bg-gray-100 justify-center">
-              Ignorer
-            </ToastAction>
-          </div>
-        ),
-      });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, restaurants]);
 
   const handleDeleteAccount = async () => {
     if (!client) return;
@@ -186,6 +157,19 @@ export default function CardsPage() {
         <RewardModal
           restaurant={rewardRestaurant}
           onClose={handleModalClose}
+        />
+      )}
+      {pendingReward && (
+        <ReferralRewardModal
+          reward={pendingReward}
+          onUse={() => {
+            toast({
+              title: "Récompense utilisée",
+              description: `Montrez ce message chez ${pendingReward.restaurant.name} pour recevoir: ${pendingReward.reward}`,
+            });
+            removeReward(pendingReward.id);
+          }}
+          onDismiss={() => removeReward(pendingReward.id)}
         />
       )}
     </div>
