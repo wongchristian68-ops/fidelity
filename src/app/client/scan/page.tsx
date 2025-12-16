@@ -5,35 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import QrScanner from '@/components/client/qr-scanner';
-import type { Client, Restaurant, StampQrCode, ClientCard, RestaurantUpdate } from '@/lib/types';
-import { getClient, getRestaurant, saveClient, saveRestaurant, updateRestaurant } from '@/lib/db';
+import type { Client, Restaurant, StampQrCode, RestaurantUpdate } from '@/lib/types';
+import { getClient, getRestaurant, saveClient, updateRestaurant } from '@/lib/db';
 import { useSession } from '@/hooks/use-session';
-import { textToSpeech } from '../actions';
-import { useState, useRef, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { useState } from 'react';
 
 export default function ScanPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { session } = useSession();
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  useEffect(() => {
-    if (audioUrl && audioRef.current) {
-      audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
-    }
-  }, [audioUrl]);
-
-  const playNotification = async (text: string) => {
-    try {
-       const audioDataUri = await textToSpeech(text);
-       setAudioUrl(audioDataUri);
-    } catch (e) {
-       console.error("Audio notification failed", e);
-    }
-  }
 
   const handleScanSuccess = async (decodedText: string) => {
     if (isProcessing || !session || session.role !== 'client') return;
@@ -99,41 +80,36 @@ export default function ScanPage() {
     
     let newStamps = clientCard.stamps + 1;
     const stampsRequired = resto.stampsRequiredForReward || 10;
-    let restaurantUpdates: RestaurantUpdate = {
-        stampsGiven: (resto.stampsGiven || 0) + 1
-    };
-    
+    let restaurantUpdates: RestaurantUpdate = {};
+
     // Check for referral reward on first stamp for this card
-    if (clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
-        restaurantUpdates.referralsCount = (resto.referralsCount || 0) + 1;
+    if (isNewCard && clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
+      restaurantUpdates.referralsCount = (resto.referralsCount || 0) + 1;
         
-        clientCard.referrerInfo.isActivated = true;
+      clientCard.referrerInfo.isActivated = true;
         
-        toast({
-            title: `Bonus de parrainage activé !`,
-            description: `Grâce à ${clientCard.referrerInfo.referrerName}, vous bénéficiez de : ${resto.referralReward}. Montrez ce message pour en profiter.`,
-            duration: 10000,
-        });
-
-        // The referral is now consumed from the client's perspective
-        delete client.cards[restoId].referrerInfo;
+      toast({
+          title: `Bonus de parrainage activé !`,
+          description: `Grâce à ${clientCard.referrerInfo.referrerName}, vous bénéficiez de : ${resto.referralReward}. Montrez ce message pour en profiter.`,
+          duration: 10000,
+      });
     }
-
 
     if (newStamps >= stampsRequired) {
-      client.cards[restoId].stamps = 0; 
+      client.cards[restoId].stamps = 0;
       restaurantUpdates.rewardsGiven = (resto.rewardsGiven || 0) + 1;
       sessionStorage.setItem('rewardUnlocked', restoId);
-      await playNotification(`Félicitations ! Vous avez débloqué: ${resto.loyaltyReward}`);
+      toast({ title: `Félicitations !`, description: `Vous avez débloqué: ${resto.loyaltyReward}` });
     } else {
-       client.cards[restoId].stamps = newStamps;
-       await playNotification(`Tampon ajouté chez ${resto.name}.`);
+      client.cards[restoId].stamps = newStamps;
+      restaurantUpdates.stampsGiven = (resto.stampsGiven || 0) + 1;
+      toast({ title: "Succès!", description: `Tampon ajouté chez ${resto.name}!` });
     }
-
-    await saveClient(client.id, client);
-    await updateRestaurant(restoId, restaurantUpdates);
     
-    toast({ title: "Succès!", description: `Tampon ajouté chez ${resto.name}!` });
+    await saveClient(client.id, client);
+    if (Object.keys(restaurantUpdates).length > 0) {
+        await updateRestaurant(restoId, restaurantUpdates);
+    }
   };
 
   const handleScanError = (errorMessage: string) => {
@@ -153,7 +129,6 @@ export default function ScanPage() {
             />
         </CardContent>
        </Card>
-       {audioUrl && <audio ref={audioRef} src={audioUrl} />}
     </div>
   );
 }
