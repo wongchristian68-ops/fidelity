@@ -9,6 +9,7 @@ import type { Client, Restaurant, StampQrCode, RestaurantUpdate } from '@/lib/ty
 import { getClient, getRestaurant, saveClient, updateRestaurant } from '@/lib/db';
 import { useSession } from '@/hooks/use-session';
 import { useState } from 'react';
+import { playChime } from '@/lib/audio';
 
 export default function ScanPage() {
   const router = useRouter();
@@ -76,6 +77,7 @@ export default function ScanPage() {
       return;
     }
 
+    playChime();
     clientCard.scannedCodes.push(qrCodeValue);
     
     let newStamps = clientCard.stamps + 1;
@@ -83,11 +85,10 @@ export default function ScanPage() {
     let restaurantUpdates: RestaurantUpdate = {};
 
     // Check for referral reward on first stamp for this card
-    if (isNewCard && clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
+    if ((isNewCard || clientCard.stamps === 0) && clientCard.referrerInfo && !clientCard.referrerInfo.isActivated) {
       restaurantUpdates.referralsCount = (resto.referralsCount || 0) + 1;
-        
       clientCard.referrerInfo.isActivated = true;
-        
+      
       toast({
           title: `Bonus de parrainage activé !`,
           description: `Grâce à ${clientCard.referrerInfo.referrerName}, vous bénéficiez de : ${resto.referralReward}. Montrez ce message pour en profiter.`,
