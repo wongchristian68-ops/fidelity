@@ -9,32 +9,28 @@ export function playChime() {
 
   const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
 
-  // Create two oscillators for a pleasant interval (e.g., a major third)
-  const oscillator1 = audioCtx.createOscillator();
-  const oscillator2 = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-
-  oscillator1.type = 'sine';
-  oscillator2.type = 'sine';
-
-  // Frequencies for C5 and E5
-  oscillator1.frequency.setValueAtTime(523.25, audioCtx.currentTime);
-  oscillator2.frequency.setValueAtTime(659.25, audioCtx.currentTime);
-
-  // Fade in and out to avoid clicking sounds
+  // Create oscillators for a more bell-like sound
+  const fundamental = 440; // A4
+  const overtones = [0.5, 1, 1.5, 2.7, 3.8];
   const now = audioCtx.currentTime;
-  gainNode.gain.setValueAtTime(0, now);
-  gainNode.gain.linearRampToValueAtTime(0.5, now + 0.05); // Quick fade-in
-  gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.5); // Fade-out
 
-  // Connect graph
-  oscillator1.connect(gainNode);
-  oscillator2.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
+  overtones.forEach((ratio, index) => {
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
 
-  // Start and stop the oscillators
-  oscillator1.start(now);
-  oscillator2.start(now);
-  oscillator1.stop(now + 0.5);
-  oscillator2.stop(now + 0.5);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(fundamental * ratio, now);
+    
+    // Each overtone has a different volume and decay
+    const initialGain = 0.4 / (index + 1);
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(initialGain, now + 0.02); // Quick attack
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 1.2 + (index * 0.1)); // Longer, varied decay
+
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    osc.start(now);
+    osc.stop(now + 1.5);
+  });
 }
