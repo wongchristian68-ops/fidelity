@@ -26,7 +26,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
-import { ReviewManager } from '@/components/restaurant/review-manager';
 import { saveRestaurant } from '@/lib/db';
 
 export default function RestaurantPage() {
@@ -176,8 +175,6 @@ export default function RestaurantPage() {
             </Button>
           </CardContent>
         </Card>
-        
-        <ReviewManager restaurant={restaurant} />
 
         <Card>
           <CardHeader>

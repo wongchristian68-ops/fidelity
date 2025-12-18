@@ -15,7 +15,7 @@ import {
   deleteField,
   where,
 } from 'firebase/firestore';
-import type { Restaurant, Client, Review, RestaurantUpdate } from './types';
+import type { Restaurant, Client, RestaurantUpdate } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -211,55 +211,4 @@ export async function deleteClient(id: string): Promise<void> {
     errorEmitter.emit('permission-error', permissionError);
     throw permissionError;
   });
-}
-
-// --- Reviews (Simulated) ---
-const FAKE_REVIEWS: { [restoId: string]: Review[] } = {
-  'resto_le_délicieux': [
-    { id: 'rev1', author: 'John D.', rating: 5, text: "Absolutely fantastic! The food was delicious and the service was top-notch. Will definitely come back.", language: 'English', timestamp: Date.now() - 1000 * 3600 * 2, aiResponse: '' },
-    { id: 'rev2', author: 'Marie L.', rating: 4, text: "Très bonne expérience, les plats sont savoureux et le cadre est agréable. Juste un peu d'attente.", language: 'French', timestamp: Date.now() - 1000 * 3600 * 8, aiResponse: '' },
-    { id: 'rev3', author: 'Lí Wěi', rating: 5, text: "非常棒的餐厅！食物很美味，环境也很好。我一定会推荐给我的朋友。", language: 'Mandarin Chinese', timestamp: Date.now() - 1000 * 3600 * 24 * 2, aiResponse: '' },
-  ],
-  // Add more fake reviews for other restaurants if needed for testing
-};
-
-export function getRecentReviews(restoId: string): Review[] {
-    const reviews = get<Review[]>('reviews') || [];
-    const restoKey = Object.keys(FAKE_REVIEWS).find(key => restoId.includes(key.split('_')[1]));
-    const restoReviews = restoKey ? FAKE_REVIEWS[restoKey] : [];
-    
-    const savedResponses = reviews.filter(r => r.id.startsWith(restoId));
-    
-    return restoReviews.map(rr => {
-        const saved = savedResponses.find(sr => sr.id === `${restoId}_${rr.id}`);
-        return saved ? {...rr, aiResponse: saved.aiResponse} : rr;
-    });
-}
-
-export function saveReviewResponse(restoId: string, reviewId: string, response: string): void {
-   const reviews = get<Review[]>('reviews') || [];
-   const uniqueId = `${restoId}_${reviewId}`;
-   const reviewIndex = reviews.findIndex(r => r.id === uniqueId);
-    if (reviewIndex !== -1) {
-        reviews[reviewIndex].aiResponse = response;
-    } else {
-        const restoKey = Object.keys(FAKE_REVIEWS).find(key => restoId.includes(key.split('_')[1]));
-        const originalReview = restoKey ? FAKE_REVIEWS[restoKey]?.find(r => r.id === reviewId) : undefined;
-        if (originalReview) {
-            reviews.push({ ...originalReview, id: uniqueId, aiResponse: response });
-        }
-    }
-    set('reviews', reviews);
-}
-
-
-// --- Generic DB Functions (localStorage for non-Firestore data) ---
-function get<T>(key: string): T | null {
-  if (!isClient) return null;
-  return JSON.parse(localStorage.getItem(key) || 'null');
-}
-
-function set<T>(key: string, value: T): void {
-  if (!isClient) return;
-  localStorage.setItem(key, JSON.stringify(value));
 }
