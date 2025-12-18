@@ -1,15 +1,21 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSession } from '@/hooks/use-session';
-import { getClient, getClientsWithReferralCode, getRestaurant, getRestaurants, saveClient, saveRestaurant } from '@/lib/db';
+import { getClient, getClientsWithReferralCode, getRestaurant, getRestaurants, saveClient, updateRestaurant, getClientsReferredBy } from '@/lib/db';
 import type { Client, Restaurant } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Users } from 'lucide-react';
+
+interface ReferredClientInfo {
+  name: string;
+  restaurantName: string;
+}
 
 export default function ReferralPage() {
   const { session, isLoading } = useSession();
@@ -19,6 +25,7 @@ export default function ReferralPage() {
   const [referralCodeInput, setReferralCodeInput] = useState('');
   const [selectedRestoId, setSelectedRestoId] = useState('');
   const [isDataLoading, setIsDataLoading] = useState(true);
+  const [referredClients, setReferredClients] = useState<ReferredClientInfo[]>([]);
 
   useEffect(() => {
     if (session) {
@@ -30,6 +37,21 @@ export default function ReferralPage() {
         ]);
         setClient(clientData);
         setAllRestaurants(restaurantsData);
+
+        if (clientData) {
+          const allReferred: ReferredClientInfo[] = [];
+          for (const restoId in clientData.cards) {
+            const referred = await getClientsReferredBy(session.id, restoId);
+            referred.forEach(c => {
+              allReferred.push({
+                name: c.name,
+                restaurantName: restaurantsData[restoId]?.name || 'Restaurant inconnu'
+              });
+            });
+          }
+          setReferredClients(allReferred);
+        }
+
         setIsDataLoading(false);
       };
       fetchData();
@@ -52,7 +74,7 @@ export default function ReferralPage() {
     const referrer = referrers.length > 0 ? referrers[0] : null;
     const referrerId = referrer?.id;
 
-    if (referrerId) {
+    if (referrerId && referrer) {
        const updatedClient = { ...client };
       if (!updatedClient.cards[selectedRestoId]) {
          updatedClient.cards[selectedRestoId] = {
@@ -76,8 +98,8 @@ export default function ReferralPage() {
       const restoToUpdate = await getRestaurant(selectedRestoId);
       if(restoToUpdate) {
         // This was causing a permission error because a client cannot update a restaurant document.
-        // restoToUpdate.referralsCount = (restoToUpdate.referralsCount || 0) + 1;
-        // await saveRestaurant(selectedRestoId, restoToUpdate); 
+        // We now use updateRestaurant which should be allowed by security rules for this specific field.
+        await updateRestaurant(selectedRestoId, { referralsCount: (restoToUpdate.referralsCount || 0) + 1 });
       }
 
       setClient(updatedClient);
@@ -93,12 +115,8 @@ export default function ReferralPage() {
     return <div className="p-4 text-center">Chargement...</div>;
   }
   
-  // Restaurants where client has a card but no referrer yet
   const restaurantsAvailableForReferral = Object.values(allRestaurants)
       .filter(resto => !client?.cards[resto.id]?.referrerInfo);
-
-
-  const hasCards = client && Object.keys(client.cards).length > 0;
 
   return (
     <div className="p-4 space-y-6">
@@ -110,6 +128,35 @@ export default function ReferralPage() {
           <p className="text-sm text-gray-600">
             Retrouvez vos codes de parrainage directement sur vos cartes de fidélité respectives. Partagez-les pour gagner des récompenses !
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="font-headline text-lg">Mes filleuls</CardTitle>
+              <CardDescription>Amis que vous avez parrainés</CardDescription>
+            </div>
+            <div className="flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+              <Users className="w-4 h-4"/>
+              <span className="font-bold text-lg">{referredClients.length}</span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {referredClients.length > 0 ? (
+            <ul className="space-y-2">
+              {referredClients.map((c, index) => (
+                <li key={index} className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded-md">
+                  <span className="font-medium text-gray-800">{c.name}</span>
+                  <span className="text-xs text-gray-500">{c.restaurantName}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-500 text-center py-4">Vous n'avez pas encore parrainé d'ami.</p>
+          )}
         </CardContent>
       </Card>
       

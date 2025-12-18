@@ -170,6 +170,29 @@ export async function getClientsWithReferralCode(code: string, restoId: string):
   }
 }
 
+export async function getClientsReferredBy(referrerId: string, restoId: string): Promise<Client[]> {
+  const db = getDb();
+  const clientsRef = collection(db, 'clients');
+  const q = query(clientsRef, where(`cards.${restoId}.referrerInfo.referrerId`, '==', referrerId));
+
+  try {
+    const snapshot = await getDocs(q);
+    const clients: Client[] = [];
+    snapshot.forEach((doc) => {
+      clients.push({ id: doc.id, ...doc.data() } as Client);
+    });
+    return clients;
+  } catch (error) {
+     const permissionError = new FirestorePermissionError({
+      path: clientsRef.path,
+      operation: 'list',
+    });
+    errorEmitter.emit('permission-error', permissionError);
+    throw permissionError;
+  }
+}
+
+
 export async function getClient(id: string): Promise<Client | null> {
   const db = getDb();
   const docRef = doc(db, 'clients', id);
